@@ -1,7 +1,8 @@
 ﻿param(
-    [ValidateSet("start","stop","restart","status","logs","watch","version","bump")]
+    [ValidateSet("start","stop","restart","status","logs","watch","version","bump","release")]
     [string]$Action = "status",
-    [string]$Level = "patch"
+    [string]$Level = "patch",
+    [string]$Notes = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -129,6 +130,53 @@ function Bump-Version {
     Write-Host "[bump] $v -> $new"
 }
 
+function New-Release {
+    param([string]$Part = "patch", [string]$Notes = "")
+
+    $gh = @(
+        (Get-Command gh.exe -ErrorAction SilentlyContinue).Source,
+        "C:\Program Files\GitHub CLI\gh.exe",
+        "$env:ProgramFiles\GitHub CLI\gh.exe"
+    ) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -First 1
+    if (-not $gh) { Write-Host "[release] gh не найден. Установите GitHub CLI."; return }
+
+    $env:GITHUB_TOKEN = $null
+    Write-Host "[release] Проверяю авторизацию gh..."
+    $auth = & $gh auth status 2>&1 | Out-String
+    if ($auth -notmatch "Logged in" -and $auth -notmatch "^  X") {
+        Write-Host "[release] gh не авторизован. Выполните gh auth login."; return
+    }
+
+    $dirty = git -C $Root status --porcelain
+    if ($dirty) {
+        Write-Host "[release] Рабочее дерево не чистое. Закоммитьте изменения сперва:"
+        Write-Host $dirty
+        return
+    }
+
+    Bump-Version -Part $Part
+    $ver = Get-Version
+    $tag = "v$ver"
+
+    git -C $Root add pyproject.toml
+    git -C $Root commit -m "Выпуск $tag"
+    git -C $Root push
+
+    if (& $gh tag --list $tag) {
+        Write-Host "[release] Тег $tag уже существует."
+    } else {
+        git -C $Root tag -a $tag -m "Release $tag"
+        git -C $Root push origin $tag
+    }
+    Write-Host "[release] Создаю GitHub release $tag..."
+    if ($Notes) {
+        & $gh release create $tag --title $tag --notes $Notes
+    } else {
+        & $gh release create $tag --title $tag --generate-notes
+    }
+    Write-Host "[release] Готово: https://github.com/Kerosyin/Morning-Companion/releases/tag/$tag"
+}
+
 switch ($Action) {
     "start"   { Start-Bot }
     "stop"    { Stop-Bot }
@@ -138,4 +186,5 @@ switch ($Action) {
     "watch"   { Watch-Logs }
     "version" { Show-Version }
     "bump"    { Bump-Version -Part $Level }
+    "release" { New-Release -Part $Level -Notes $Notes }
 }
