@@ -1,5 +1,5 @@
 ﻿param(
-    [ValidateSet("start","stop","restart","status","logs")]
+    [ValidateSet("start","stop","restart","status","logs","watch")]
     [string]$Action = "status"
 )
 
@@ -72,10 +72,21 @@ function Show-Logs {
     }
 }
 
+function Watch-Logs {
+    $files = @($ErrLog, $OutLog) | Where-Object { Test-Path $_ }
+    if (-not $files) {
+        Write-Host "[watch] Логи ещё не созданы. Запустите бота: bot-start"
+        return
+    }
+    Write-Host "[watch] Слежу за логами. Живая активность ниже. Для выхода нажмите Ctrl+C." -ForegroundColor Cyan
+    Get-Content $files -Tail 10 -Wait
+}
+
 switch ($Action) {
     "start"   { Start-Bot }
     "stop"    { Stop-Bot }
     "restart" { Restart-Bot }
     "status"  { Show-Status }
     "logs"    { Show-Logs }
+    "watch"   { Watch-Logs }
 }
