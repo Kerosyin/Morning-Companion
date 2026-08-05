@@ -1,6 +1,8 @@
 from aiogram import Bot, Dispatcher
 
 from app.config import Settings
+from app.db.base import Base
+from app.db.engine import engine
 from app.telegram.bot import create_bot
 from app.telegram.dispatcher import create_dispatcher
 
@@ -16,6 +18,8 @@ class Application:
         self.dispatcher: Dispatcher = create_dispatcher()
 
     async def start(self):
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
 
         await self.dispatcher.start_polling(self.bot)
 

@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     openrouter_api_key: str = Field(alias="OPENROUTER_API_KEY")
 
     timezone: str = Field(default="Europe/Moscow", alias="TIMEZONE")
+    database_url: str = Field(alias="DATABASE_URL")
 
 
 @lru_cache
