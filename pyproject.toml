@@ -1,0 +1,25 @@
+[project]
+name = "morning-companion"
+version = "0.1.0"
+description = "Daily AI Telegram companion"
+requires-python = ">=3.12"
+
+dependencies = [
+    "aiogram>=3.22.0",
+    "sqlalchemy>=2.0",
+    "aiosqlite",
+    "apscheduler",
+    "aiohttp",
+    "python-dotenv",
+    "pydantic>=2",
+    "pydantic-settings",
+]
+
+[tool.black]
+line-length = 88
+
+[tool.ruff]
+line-length = 88
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
