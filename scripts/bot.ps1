@@ -11,8 +11,9 @@ $OutputEncoding = [System.Text.Encoding]::UTF8
 $Root = Split-Path -Parent $PSScriptRoot
 $LogDir = Join-Path $Root "data\logs"
 New-Item -ItemType Directory -Path $LogDir -Force | Out-Null
-$OutLog = Join-Path $LogDir "bot.out.log"
+$OutLog = Join-Path $LogDir "bot.log"
 $ErrLog = Join-Path $LogDir "bot.err.log"
+$StdoutLog = Join-Path $LogDir "bot.stdout.log"
 
 function Get-BotProcess {
     Get-CimInstance Win32_Process -Filter "Name='python.exe'" |
@@ -29,7 +30,7 @@ function Start-Bot {
     $env:PYTHONUNBUFFERED = "1"
     Start-Process -FilePath "uv" -ArgumentList "run","python","-m","app.main" `
         -WorkingDirectory $Root `
-        -RedirectStandardOutput $OutLog `
+        -RedirectStandardOutput $StdoutLog `
         -RedirectStandardError $ErrLog `
         -WindowStyle Hidden
     Write-Host "[start] Бот запущен. Логи: $LogDir"

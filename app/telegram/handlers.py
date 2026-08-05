@@ -29,9 +29,14 @@ async def process_user_message(message: Message, uow: IUnitOfWork):
     # In the future, this will be handled by a proper DI container
     logger.info("Получено сообщение от %s: %s", message.from_user.id, message.text or message.content_type)
 
-    service = DialogService()
+    try:
+        service = DialogService()
+        response_text = await service.process_message(uow, message)
+    except Exception:  # noqa: BLE001
+        logger.exception("Ошибка обработки сообщения от %s", message.from_user.id)
+        await message.answer("Что-то пошло не так 😔 Попробуй написать ещё раз.")
+        return
 
-    response_text = await service.process_message(uow, message)
     await message.answer(response_text)
 
     logger.info("Отправлен ответ пользователю %s", message.from_user.id)
