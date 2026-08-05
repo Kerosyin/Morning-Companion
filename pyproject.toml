@@ -13,6 +13,7 @@ dependencies = [
     "python-dotenv",
     "pydantic>=2",
     "pydantic-settings",
+    "aiohttp-socks>=0.11.0",
 ]
 
 [tool.black]

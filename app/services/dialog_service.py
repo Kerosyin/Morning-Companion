@@ -1,5 +1,6 @@
 from aiogram.types import Message as TelegramMessage
 from datetime import datetime
+import logging
 
 from app.ai.factory import get_ai_provider
 from app.ai.models import ConversationContext
@@ -7,6 +8,8 @@ from app.db.models.message import MessageRole
 from app.db.uow import IUnitOfWork
 from app.services.conversation_service import ConversationService
 from app.services.history_service import HistoryService
+
+logger = logging.getLogger("morning_companion")
 
 
 class DialogService:
@@ -65,9 +68,11 @@ class DialogService:
                 memories=memories,
                 message=message.text,
             )
+            logger.info("Запрашиваю ответ у ИИ (OpenRouter, model=%s)", self.conversation.provider.model)
             ai_response = await self.conversation.reply(
                 context,
             )
+            logger.info("ИИ ответил: %.100s", ai_response.reply)
 
             # 5. Save bot's reply
             await uow.messages.create(

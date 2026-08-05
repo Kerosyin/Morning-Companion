@@ -15,12 +15,16 @@ class Settings(BaseSettings):
     bot_token: str = Field(alias="BOT_TOKEN")
     admin_id: int = Field(alias="ADMIN_ID")
 
+    proxy: str | None = Field(default=None, alias="PROXY")
+
     ai_provider: str = Field(default="openrouter", alias="AI_PROVIDER")
     model: str = Field(alias="MODEL")
     openrouter_api_key: str = Field(alias="OPENROUTER_API_KEY")
 
     timezone: str = Field(default="Europe/Moscow", alias="TIMEZONE")
     database_url: str = Field(alias="DATABASE_URL")
+
+    message_retention_days: int = Field(default=365, alias="MESSAGE_RETENTION_DAYS")
 
     allowed_users: Annotated[list[int], NoDecode] = Field(
         default_factory=list, alias="ALLOWED_USERS"

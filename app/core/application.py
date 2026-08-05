@@ -1,12 +1,21 @@
 from __future__ import annotations
 
+import asyncio
+import logging
+
+import aiohttp
 from aiogram import Bot, Dispatcher
+from aiogram.exceptions import TelegramAPIError
 
 from app.scheduler.admin_job import AdminJob
 from app.scheduler.scheduler import Scheduler
+from app.scheduler.cleanup_job import CleanupJob
 from app.scheduler.morning_job import MorningJob
 from app.workflows.admin_workflow import AdminWorkflow
+from app.workflows.cleanup_workflow import CleanupWorkflow
 from app.workflows.morning_workflow import MorningWorkflow
+
+logger = logging.getLogger("morning_companion")
 
 
 class Application:
@@ -17,11 +26,13 @@ class Application:
         dispatcher: Dispatcher,
         uow_factory,
         admin_id: int,
+        retention_days: int,
     ):
         self.bot = bot
         self.dispatcher = dispatcher
         self.uow_factory = uow_factory
         self.admin_id = admin_id
+        self.retention_days = retention_days
 
         self.scheduler = Scheduler()
 
@@ -58,11 +69,37 @@ class Application:
             replace_existing=True,
         )
 
+        cleanup_job = CleanupJob(
+            workflow=CleanupWorkflow(
+                uow_factory=self.uow_factory,
+                retention_days=self.retention_days,
+            ),
+        )
+
+        self.scheduler.add_job(
+            cleanup_job.run,
+            trigger="cron",
+            hour=3,
+            id="cleanup-job",
+            replace_existing=True,
+        )
+
         self.scheduler.start()
 
-        await self.dispatcher.start_polling(
-            self.bot
-        )
+        await self._polling_loop()
+
+    async def _polling_loop(self):
+        while True:
+            try:
+                await self.dispatcher.start_polling(self.bot)
+            except (TelegramAPIError, OSError, aiohttp.ClientError) as exc:
+                logger.warning("Поллинг прерван (%s). Перезапускаю через 5с...", exc)
+                await asyncio.sleep(5)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001
+                logger.exception("Поллинг упал: %s", exc)
+                await asyncio.sleep(5)
 
     async def stop(self):
 

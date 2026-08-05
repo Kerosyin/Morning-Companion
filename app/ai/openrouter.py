@@ -1,9 +1,14 @@
+import asyncio
+import logging
+
 import aiohttp
 
 from app.ai.builders.context_builder import ContextBuilder
 from app.ai.models import AIResponse, ConversationContext
 from app.ai.provider import AIProvider
 from app.config import get_settings
+
+logger = logging.getLogger("morning_companion")
 
 
 class OpenRouterProvider(AIProvider):
@@ -12,6 +17,8 @@ class OpenRouterProvider(AIProvider):
         self.api_key = settings.openrouter_api_key
         self.model = settings.model
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
+        self.proxy = settings.proxy
+        self.max_retries = 3
 
     async def chat(self, context: ConversationContext) -> AIResponse:
         """
@@ -46,9 +53,32 @@ class OpenRouterProvider(AIProvider):
         payload = {"model": self.model, "messages": messages}
 
         async with aiohttp.ClientSession() as session:
-            async with session.post(
-                self.api_url, headers=headers, json=payload
-            ) as response:
-                response.raise_for_status()
-                data = await response.json()
-                return data["choices"][0]["message"]["content"]
+            for attempt in range(self.max_retries):
+                logger.info(
+                    "Запрос к OpenRouter (model=%s, attempt=%d/%d)",
+                    self.model,
+                    attempt + 1,
+                    self.max_retries,
+                )
+                try:
+                    async with session.post(
+                        self.api_url, headers=headers, json=payload, proxy=self.proxy
+                    ) as response:
+                        if response.status not in (429, 500, 502, 503, 504):
+                            response.raise_for_status()
+                            data = await response.json()
+                            return data["choices"][0]["message"]["content"]
+                        logger.warning(
+                            "OpenRouter вернул %s, повтор через %ds",
+                            response.status,
+                            2**attempt,
+                        )
+                        await asyncio.sleep(2**attempt)
+                except aiohttp.ClientError as exc:
+                    logger.warning(
+                        "Сбой соединения с OpenRouter (%s), повтор через %ds",
+                        exc,
+                        2**attempt,
+                    )
+                    await asyncio.sleep(2**attempt)
+            raise RuntimeError(f"OpenRouter не ответил после {self.max_retries} попыток")

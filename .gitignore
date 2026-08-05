@@ -10,6 +10,7 @@ venv/
 .vscode/
 
 data/*.db
+data/logs/
 
 .pytest_cache/
 
