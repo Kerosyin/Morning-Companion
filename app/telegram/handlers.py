@@ -4,6 +4,7 @@ from aiogram import Router
 from aiogram.filters import CommandStart
 from aiogram.types import Message
 
+from app.container import get_container
 from app.db.uow import IUnitOfWork
 from app.services.dialog_service import DialogService
 
@@ -27,10 +28,14 @@ async def process_user_message(message: Message, uow: IUnitOfWork):
     Handles any user message, processes it via DialogService, and sends a reply.
     """
     # In the future, this will be handled by a proper DI container
-    logger.info("Получено сообщение от %s: %s", message.from_user.id, message.text or message.content_type)
+    logger.info(
+        "Получено сообщение от %s: %s",
+        message.from_user.id,
+        message.text or message.content_type,
+    )
 
     try:
-        service = DialogService()
+        service: DialogService = get_container().dialog_service()
         response_text = await service.process_message(uow, message)
     except Exception:  # noqa: BLE001
         logger.exception("Ошибка обработки сообщения от %s", message.from_user.id)

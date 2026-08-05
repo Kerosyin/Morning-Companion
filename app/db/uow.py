@@ -1,14 +1,15 @@
 from __future__ import annotations
-from typing import Type
+
 from abc import ABC, abstractmethod
+from typing import Type
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories import (
-    UserRepository,
-    MessageRepository,
-    MemoryRepository,
     DailyActivityRepository,
+    MemoryRepository,
+    MessageRepository,
+    UserRepository,
 )
 
 

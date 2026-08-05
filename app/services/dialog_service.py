@@ -1,10 +1,11 @@
-from aiogram.types import Message as TelegramMessage
-from datetime import datetime
 import logging
+from datetime import datetime
 
-from app.ai.factory import get_ai_provider
+from aiogram.types import Message as TelegramMessage
+
 from app.ai.memory_extractor import MemoryExtractor
 from app.ai.models import ConversationContext
+from app.ai.provider import AIProvider
 from app.db.models.message import MessageRole
 from app.db.uow import IUnitOfWork
 from app.services.conversation_service import ConversationService
@@ -19,8 +20,11 @@ AI_UNAVAILABLE_REPLY = (
 
 
 class DialogService:
-    def __init__(self):
-        provider = get_ai_provider()
+    def __init__(self, provider: AIProvider | None = None):
+        if provider is None:
+            from app.ai.openrouter import OpenRouterProvider
+
+            provider = OpenRouterProvider()
         self.conversation = ConversationService(provider)
         self.history_service = HistoryService()
         self.memory_service = MemoryService(MemoryExtractor(provider))
@@ -74,7 +78,10 @@ class DialogService:
                 memories=memories,
                 message=message.text,
             )
-            logger.info("Запрашиваю ответ у ИИ (OpenRouter, model=%s)", self.conversation.provider.model)
+            logger.info(
+                "Запрашиваю ответ у ИИ (OpenRouter, model=%s)",
+                getattr(self.conversation.provider, "model", "n/a"),
+            )
             try:
                 ai_response = await self.conversation.reply(
                     context,

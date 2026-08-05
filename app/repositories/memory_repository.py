@@ -1,7 +1,7 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import User, Memory
+from app.db.models import Memory, User
 from app.repositories.base_repository import BaseRepository
 
 

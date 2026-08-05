@@ -8,9 +8,9 @@ from aiogram import Bot, Dispatcher
 from aiogram.exceptions import TelegramAPIError
 
 from app.scheduler.admin_job import AdminJob
-from app.scheduler.scheduler import Scheduler
 from app.scheduler.cleanup_job import CleanupJob
 from app.scheduler.morning_job import MorningJob
+from app.scheduler.scheduler import Scheduler
 from app.workflows.admin_workflow import AdminWorkflow
 from app.workflows.cleanup_workflow import CleanupWorkflow
 from app.workflows.morning_workflow import MorningWorkflow

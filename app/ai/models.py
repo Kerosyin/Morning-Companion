@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import List, Optional
 
-from app.db.models import User, Message, Memory
+from app.db.models import Memory, Message, User
 
 
 @dataclass

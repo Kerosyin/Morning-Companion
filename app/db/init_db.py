@@ -1,9 +1,9 @@
 import asyncio
 from pathlib import Path
 
-from alembic import command
 from alembic.config import Config
 
+from alembic import command
 from app.config import get_settings
 
 

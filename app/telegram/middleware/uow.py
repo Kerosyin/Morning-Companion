@@ -3,8 +3,8 @@ from typing import Any, Awaitable, Callable, Dict
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
 
-from app.db.uow import IUnitOfWork, UnitOfWork
 from app.db.session import SessionLocal
+from app.db.uow import IUnitOfWork, UnitOfWork
 
 
 class UoWMiddleware(BaseMiddleware):

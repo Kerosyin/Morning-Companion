@@ -2,7 +2,8 @@ from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, DateTime, func, Text, Enum as SqlEnum
+from sqlalchemy import DateTime, ForeignKey, Text, func
+from sqlalchemy import Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base

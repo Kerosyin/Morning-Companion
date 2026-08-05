@@ -66,15 +66,15 @@ class TestMessageAndMemoryRepository:
             user = await uow.users.get_or_create(
                 telegram_id=789, defaults={"first_name": "Tester"}
             )
-            
+
             message = await uow.messages.create(
                 user_id=user.id, role="user", text="Hello, world!"
             )
-            
+
             memory = await uow.memories.set_memory(
                 user=user, key="test_key", value="test_value"
             )
-            
+
             await uow.commit()
 
             assert message.id is not None

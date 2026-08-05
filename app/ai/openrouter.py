@@ -81,4 +81,6 @@ class OpenRouterProvider(AIProvider):
                         2**attempt,
                     )
                     await asyncio.sleep(2**attempt)
-            raise RuntimeError(f"OpenRouter не ответил после {self.max_retries} попыток")
+            raise RuntimeError(
+                f"OpenRouter не ответил после {self.max_retries} попыток"
+            )

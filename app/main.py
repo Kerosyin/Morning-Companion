@@ -1,5 +1,5 @@
-import asyncio
 import argparse
+import asyncio
 
 from app.config import get_settings
 from app.core.application import Application
@@ -43,7 +43,11 @@ async def main():
         admin_id=settings.admin_id,
         retention_days=settings.message_retention_days,
     )
-    logger.info("Bot starting (model=%s, provider=%s)", settings.model, settings.ai_provider)
+    logger.info(
+        "Bot starting (model=%s, provider=%s)",
+        settings.model,
+        settings.ai_provider,
+    )
     await app.start()
 
 
