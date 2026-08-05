@@ -3,21 +3,27 @@ from datetime import datetime
 import logging
 
 from app.ai.factory import get_ai_provider
+from app.ai.memory_extractor import MemoryExtractor
 from app.ai.models import ConversationContext
 from app.db.models.message import MessageRole
 from app.db.uow import IUnitOfWork
 from app.services.conversation_service import ConversationService
 from app.services.history_service import HistoryService
+from app.services.memory_service import MemoryService
 
 logger = logging.getLogger("morning_companion")
+
+AI_UNAVAILABLE_REPLY = (
+    "Извини, я на мгновение отвлёкся 😅 Попробуй написать ещё раз."
+)
 
 
 class DialogService:
     def __init__(self):
-        self.conversation = ConversationService(
-            get_ai_provider(),
-        )
+        provider = get_ai_provider()
+        self.conversation = ConversationService(provider)
         self.history_service = HistoryService()
+        self.memory_service = MemoryService(MemoryExtractor(provider))
 
     async def process_message(self, uow: IUnitOfWork, message: TelegramMessage) -> str:
         """
@@ -69,9 +75,13 @@ class DialogService:
                 message=message.text,
             )
             logger.info("Запрашиваю ответ у ИИ (OpenRouter, model=%s)", self.conversation.provider.model)
-            ai_response = await self.conversation.reply(
-                context,
-            )
+            try:
+                ai_response = await self.conversation.reply(
+                    context,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("ИИ не ответил (%s). Отправляю фолбэк.", exc)
+                return AI_UNAVAILABLE_REPLY
             logger.info("ИИ ответил: %.100s", ai_response.reply)
 
             # 5. Save bot's reply
@@ -80,6 +90,12 @@ class DialogService:
                 role=MessageRole.ASSISTANT,
                 text=ai_response.reply,
             )
+
+            # 5.1 Best-effort memory extraction (must not break the reply)
+            try:
+                await self.memory_service.update(uow, context)
+            except Exception:  # noqa: BLE001
+                logger.exception("Извлечение памяти не удалось")
 
             await uow.commit()
 

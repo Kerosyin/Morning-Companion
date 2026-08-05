@@ -6,7 +6,7 @@ from app.ai.memory_extractor import MemoryExtractor
 from app.ai.models import ConversationContext
 from app.db.uow import IUnitOfWork
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("morning_companion")
 
 
 class MemoryService:
@@ -31,19 +31,15 @@ class MemoryService:
         if not updates:
             return
 
-        async with uow:
+        for memory in updates:
 
-            for memory in updates:
-
-                await uow.memories.set_memory(
-                    user=context.user,
-                    key=f"{memory.category}:{memory.key}",
-                    value=memory.value,
-                )
-
-            await uow.commit()
+            await uow.memories.set_memory(
+                user=context.user,
+                key=f"{memory.category}:{memory.key}",
+                value=memory.value,
+            )
 
         logger.info(
-            "Saved %s memories",
+            "Сохранено %d фактов о пользователе",
             len(updates),
         )
