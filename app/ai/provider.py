@@ -1,19 +1,37 @@
-from typing import Protocol
+from __future__ import annotations
 
-from app.ai.models import ConversationContext, AIResponse
+from abc import ABC, abstractmethod
+
+from app.ai.models import AIResponse, ConversationContext
 
 
-class AIProvider(Protocol):
+class AIProvider(ABC):
     """
-    Defines the interface for an AI provider.
-    Any AI implementation must adhere to this protocol.
+    Base interface for every LLM provider.
     """
 
+    @abstractmethod
     async def chat(
         self,
         context: ConversationContext,
     ) -> AIResponse:
         """
-        Generates a response based on the given conversation context.
+        Full conversation with memory and history.
         """
-        ...
+        raise NotImplementedError
+
+    @abstractmethod
+    async def simple_chat(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+    ) -> str:
+        """
+        Small one-shot request.
+
+        Used by:
+        - MemoryExtractor
+        - DailySummary
+        - MoodAnalyzer
+        """
+        raise NotImplementedError

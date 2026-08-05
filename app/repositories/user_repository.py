@@ -1,32 +1,79 @@
+from __future__ import annotations
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models.user import User
+from app.db.models import User
 from app.repositories.base_repository import BaseRepository
 
 
 class UserRepository(BaseRepository[User]):
+
     def __init__(self, session: AsyncSession):
         super().__init__(User, session)
+
+    async def get_by_telegram_id(
+        self,
+        telegram_id: int,
+    ) -> User | None:
+
+        return await self.get_by(
+            telegram_id=telegram_id,
+        )
 
     async def get_or_create(
         self,
         telegram_id: int,
-        **kwargs,
+        defaults: dict,
     ) -> User:
-        """
-        Retrieves a user by telegram_id or creates a new one.
-        If the user exists, it updates their profile information.
-        The session must be committed by the Unit of Work.
-        """
-        stmt = select(self.model).where(self.model.telegram_id == telegram_id)
-        result = await self.session.execute(stmt)
-        instance = result.scalars().first()
 
-        if instance:
-            # If user exists, update their details
-            await self.update(instance, **kwargs)
-            return instance
+        user = await self.get_by_telegram_id(
+            telegram_id,
+        )
 
-        # If no user is found, create a new one
-        return await self.create(telegram_id=telegram_id, **kwargs)
+        if user:
+            return user
+
+        user = await self.create(
+            telegram_id=telegram_id,
+            **defaults,
+        )
+
+        await self.session.flush()
+
+        return user
+
+    async def get_all(self) -> list[User]:
+        """
+        Returns all registered users.
+        """
+
+        result = await self.session.execute(
+            select(User)
+            .order_by(User.id)
+        )
+
+        return list(result.scalars().all())
+
+    async def get_users_by_timezone(
+        self,
+        timezone: str,
+    ) -> list[User]:
+
+        result = await self.session.execute(
+            select(User)
+            .where(User.timezone == timezone)
+            .order_by(User.id)
+        )
+
+        return list(result.scalars().all())
+
+    async def get_active_users(self) -> list[User]:
+        """
+        Placeholder.
+
+        Later this method will return only users
+        who have not disabled reminders.
+        """
+
+        return await self.get_all()

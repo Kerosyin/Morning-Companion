@@ -9,6 +9,7 @@ from app.db.base import Base
 if TYPE_CHECKING:
     from .message import Message
     from .memory import Memory
+    from .daily_activity import DailyActivity
 
 
 class User(Base):
@@ -46,5 +47,8 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     memories: Mapped[List["Memory"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    daily_activities: Mapped[List["DailyActivity"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

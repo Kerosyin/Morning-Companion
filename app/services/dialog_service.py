@@ -1,15 +1,20 @@
 from aiogram.types import Message as TelegramMessage
+from datetime import datetime
 
-from app.db.models.message import MessageRole
-from app.db.uow import IUnitOfWork
 from app.ai.factory import get_ai_provider
 from app.ai.models import ConversationContext
+from app.db.models.message import MessageRole
+from app.db.uow import IUnitOfWork
+from app.services.conversation_service import ConversationService
+from app.services.history_service import HistoryService
 
 
 class DialogService:
     def __init__(self):
-        # In the future, this could be injected.
-        self.ai_provider = get_ai_provider()
+        self.conversation = ConversationService(
+            get_ai_provider(),
+        )
+        self.history_service = HistoryService()
 
     async def process_message(self, uow: IUnitOfWork, message: TelegramMessage) -> str:
         """
@@ -40,8 +45,17 @@ class DialogService:
                 text=message.text
             )
 
+            # 2.1 Stop morning reminders once the user replies today
+            activity = await uow.daily_activity.get_or_create_today(user.id)
+            if activity.first_message_at is None:
+                await uow.daily_activity.set_first_message_time(
+                    activity,
+                    datetime.now(),
+                )
+
             # 3. Fetch conversation history and memories
             history = await uow.messages.get_history(user=user, limit=15)
+            history = self.history_service.prepare(history)
             memories = await uow.memories.get_all_for_user(user=user)
 
             # 4. Generate reply
@@ -51,7 +65,9 @@ class DialogService:
                 memories=memories,
                 message=message.text,
             )
-            ai_response = await self.ai_provider.chat(context)
+            ai_response = await self.conversation.reply(
+                context,
+            )
 
             # 5. Save bot's reply
             await uow.messages.create(

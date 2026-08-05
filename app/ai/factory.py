@@ -1,27 +1,17 @@
-from app.ai.provider import AIProvider
 from app.ai.openrouter import OpenRouterProvider
-from app.config import get_settings
+from app.ai.provider import AIProvider
 
-settings = get_settings()
+
+_provider: AIProvider | None = None
 
 
 def get_ai_provider() -> AIProvider:
     """
-    Factory function to get the configured AI provider.
+    Factory function to get the configured AI provider using a singleton pattern.
     """
-    provider_name = settings.ai_provider.lower()
+    global _provider
 
-    if provider_name == "openrouter":
-        return OpenRouterProvider(
-            api_key=settings.openrouter_api_key,
-            model=settings.model,
-        )
-    # In the future, we can add other providers like "ollama", "glm", etc.
-    # elif provider_name == "ollama":
-    #     return OllamaProvider(...)
+    if _provider is None:
+        _provider = OpenRouterProvider()
 
-    raise ValueError(f"Unknown AI provider: {provider_name}")
-
-
-# You can also have a single instance if you prefer
-ai_provider_instance = get_ai_provider()
+    return _provider

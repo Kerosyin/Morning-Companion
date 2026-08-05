@@ -1,13 +1,22 @@
 from datetime import datetime
+from enum import Enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, DateTime, func, Text
+from sqlalchemy import ForeignKey, DateTime, func, Text, Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
     from .user import User
+
+
+class MessageRole(str, Enum):
+    """Defines the role of a message in a conversation."""
+
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
 
 
 class Message(Base):
@@ -18,7 +27,14 @@ class Message(Base):
         ForeignKey("users.id", ondelete="CASCADE"), index=True
     )
 
-    role: Mapped[str]  # "user", "assistant", "system"
+    role: Mapped[MessageRole] = mapped_column(
+        SqlEnum(
+            MessageRole,
+            name="message_role",
+            native_enum=False,
+            values_callable=lambda members: [member.value for member in members],
+        )
+    )
     text: Mapped[str] = mapped_column(Text)
 
     created_at: Mapped[datetime] = mapped_column(

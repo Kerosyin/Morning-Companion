@@ -8,6 +8,7 @@ from app.repositories import (
     UserRepository,
     MessageRepository,
     MemoryRepository,
+    DailyActivityRepository,
 )
 
 
@@ -15,6 +16,7 @@ class IUnitOfWork(ABC):
     users: UserRepository
     messages: MessageRepository
     memories: MemoryRepository
+    daily_activity: DailyActivityRepository
 
     @abstractmethod
     async def __aenter__(self):
@@ -43,6 +45,7 @@ class UnitOfWork(IUnitOfWork):
         self.users = UserRepository(self.session)
         self.messages = MessageRepository(self.session)
         self.memories = MemoryRepository(self.session)
+        self.daily_activity = DailyActivityRepository(self.session)
 
         return self
 

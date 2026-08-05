@@ -22,6 +22,11 @@ class Memory(Base):
     key: Mapped[str] = mapped_column(String(255), index=True)
     value: Mapped[str]
 
+    # The category of the memory, e.g., "pets", "likes", "goals"
+    category: Mapped[str] = mapped_column(
+        String(100), default="general", index=True
+    )
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=datetime.utcnow,
