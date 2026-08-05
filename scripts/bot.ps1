@@ -1,6 +1,7 @@
 ﻿param(
-    [ValidateSet("start","stop","restart","status","logs","watch")]
-    [string]$Action = "status"
+    [ValidateSet("start","stop","restart","status","logs","watch","version","bump")]
+    [string]$Action = "status",
+    [string]$Level = "patch"
 )
 
 $ErrorActionPreference = "Stop"
@@ -82,6 +83,52 @@ function Watch-Logs {
     Get-Content $files -Tail 10 -Wait
 }
 
+function Get-Version {
+    $line = (Get-Content (Join-Path $Root "pyproject.toml") | Where-Object { $_ -match '^version\s*=' } | Select-Object -First 1)
+    if ($line -match 'version\s*=\s*"([^"]+)"') {
+        return $Matches[1]
+    }
+    return $null
+}
+
+function Show-Version {
+    $v = Get-Version
+    if ($v) {
+        Write-Host "[version] $v"
+        $tag = git -C $Root tag --points-at HEAD 2>$null
+        if ($tag) { Write-Host "[version] Текущий тег: $tag" } else { Write-Host "[version] Тега на этом коммите нет" }
+    } else {
+        Write-Host "[version] Версия не найдена в pyproject.toml"
+    }
+}
+
+function Bump-Version {
+    param([string]$Part = "patch")
+    $pyproject = Join-Path $Root "pyproject.toml"
+    $v = Get-Version
+    if (-not $v) { Write-Host "[bump] Версия не найдена."; return }
+
+    $parts = $v.Split(".")
+    if ($parts.Count -ne 3) { Write-Host "[bump] Неверный формат версии: $v"; return }
+
+    switch ($Part.ToLower()) {
+        "major" { $parts[0] = [int]$parts[0] + 1; $parts[1] = 0; $parts[2] = 0 }
+        "minor" { $parts[1] = [int]$parts[1] + 1; $parts[2] = 0 }
+        "patch" { $parts[2] = [int]$parts[2] + 1 }
+        default { Write-Host "[bump] Уровень должен быть major|minor|patch"; return }
+    }
+    $new = $parts -join "."
+
+    $content = Get-Content $pyproject -Encoding UTF8
+    for ($i = 0; $i -lt $content.Count; $i++) {
+        if ($content[$i] -match '^version\s*=') {
+            $content[$i] = 'version = "' + $new + '"'
+        }
+    }
+    Set-Content -Path $pyproject -Value $content -Encoding UTF8
+    Write-Host "[bump] $v -> $new"
+}
+
 switch ($Action) {
     "start"   { Start-Bot }
     "stop"    { Stop-Bot }
@@ -89,4 +136,6 @@ switch ($Action) {
     "status"  { Show-Status }
     "logs"    { Show-Logs }
     "watch"   { Watch-Logs }
+    "version" { Show-Version }
+    "bump"    { Bump-Version -Part $Level }
 }

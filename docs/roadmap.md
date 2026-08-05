@@ -9,7 +9,8 @@
 - [x] Config — `app/config.py` (.env через pydantic-settings)
 - [x] Logging — `app/logger.py` (+ UTF-8 для логов)
 - [x] Telegram — `app/telegram` (bot, dispatcher, handlers, middleware)
-- [x] Управление процессом — `scripts/bot.ps1` (start/stop/restart/status/logs)
+- [x] Управление процессом — `scripts/bot.ps1` (start/stop/restart/status/logs/watch/version/bump)
+- [x] Версии сборок — git-теги + релизы GitHub (`v0.1.0`)
 
 ## Sprint 2 — Database
 
