@@ -1,7 +1,8 @@
 from functools import lru_cache
+from typing import Annotated
 
-from pydantic import Field
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import Field, field_validator
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -20,6 +21,19 @@ class Settings(BaseSettings):
 
     timezone: str = Field(default="Europe/Moscow", alias="TIMEZONE")
     database_url: str = Field(alias="DATABASE_URL")
+
+    allowed_users: Annotated[list[int], NoDecode] = Field(
+        default_factory=list, alias="ALLOWED_USERS"
+    )
+
+    @field_validator("allowed_users", mode="before")
+    @classmethod
+    def split_allowed_users(cls, value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [int(item.strip()) for item in value.split(",") if item.strip()]
+        return value
 
 
 @lru_cache

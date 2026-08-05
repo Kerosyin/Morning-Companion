@@ -12,7 +12,8 @@ class TestUserRepository:
         """
         async with uow:
             user = await uow.users.get_or_create(
-                telegram_id=123, username="testuser", first_name="Test"
+                telegram_id=123,
+                defaults={"username": "testuser", "first_name": "Test"},
             )
             await uow.commit()
 
@@ -27,29 +28,33 @@ class TestUserRepository:
 
     async def test_get_or_create_retrieves_existing_user(self, uow: IUnitOfWork):
         """
-        Tests that an existing user is retrieved and updated.
+        Tests that an existing user is retrieved without overwriting it.
         """
         # First, create the user
         async with uow:
-            await uow.users.get_or_create(
-                telegram_id=456, username="original", first_name="Original"
+            user = await uow.users.get_or_create(
+                telegram_id=456,
+                defaults={"username": "original", "first_name": "Original"},
             )
             await uow.commit()
 
         # Then, get_or_create the same user with updated info
         async with uow:
-            user = await uow.users.get_or_create(
-                telegram_id=456, username="updated", first_name="Updated"
+            fetched = await uow.users.get_or_create(
+                telegram_id=456,
+                defaults={"username": "updated", "first_name": "Updated"},
             )
             await uow.commit()
 
-            assert user.username == "updated"
-            assert user.first_name == "Updated"
+            assert fetched.id == user.id
+            assert fetched.telegram_id == 456
+            # get_or_create does not overwrite an existing user
+            assert fetched.username == "original"
 
-            # Verify the changes in the database
-            fetched_user = await uow.users.get(user.id)
-            assert fetched_user is not None
-            assert fetched_user.username == "updated"
+            # Verify the user is in the database
+            db_user = await uow.users.get(user.id)
+            assert db_user is not None
+            assert db_user.telegram_id == 456
 
 
 class TestMessageAndMemoryRepository:
@@ -58,7 +63,9 @@ class TestMessageAndMemoryRepository:
         Tests creating a message and a memory linked to a user within one transaction.
         """
         async with uow:
-            user = await uow.users.get_or_create(telegram_id=789, first_name="Tester")
+            user = await uow.users.get_or_create(
+                telegram_id=789, defaults={"first_name": "Tester"}
+            )
             
             message = await uow.messages.create(
                 user_id=user.id, role="user", text="Hello, world!"

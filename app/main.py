@@ -29,7 +29,7 @@ async def main():
 
     settings = get_settings()
     bot = create_bot(settings)
-    dispatcher = create_dispatcher()
+    dispatcher = create_dispatcher(settings.allowed_users)
     app = Application(
         bot=bot,
         dispatcher=dispatcher,

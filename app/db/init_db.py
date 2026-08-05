@@ -3,6 +3,9 @@ import asyncio
 from app.db.base import Base
 from app.db.engine import engine
 
+# Ensure all models are registered in Base.metadata
+import app.db.models  # noqa: F401
+
 
 async def init_db():
     """Initializes the database and creates tables."""
