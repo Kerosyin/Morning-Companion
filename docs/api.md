@@ -37,6 +37,10 @@ app/
 ├── scheduler/               # APScheduler: MorningJob, AdminJob
 ├── workflows/               # MorningWorkflow, AdminWorkflow
 └── reminders/               # Провайдер текстов напоминаний
+alembic/                     # Миграции БД (Alembic)
+    ├── env.py               # Привязка к моделям и async-движку
+    ├── alembic.ini          # Конфигурация Alembic
+    └── versions/            # Миграции (initial schema)
 ```
 
 ## Конфигурация (`app/config.py`)
@@ -73,6 +77,8 @@ app/
 - SQLAlchemy 2.0 + async (aiosqlite).
 - Сущности: `User`, `Message`, `Memory`, `DailyActivity`.
 - Доступ через репозитории (`app/repositories`) и `UnitOfWork` (`app/db/uow.py`).
+- Схема БД управляется **Alembic**: `alembic/versions/*.py`. Миграции применяются
+  автоматически при каждом запуске бота через `init_db()`.
 
 ## Расписание и воркфлоу
 
@@ -83,8 +89,11 @@ app/
 ## Запуск
 
 ```bash
-uv run python -m app.main            # запуск бота
-uv run python -m app.main --init-db  # инициализация БД (создание таблиц)
+uv run python -m app.main            # запуск бота (миграции применяются автоматически)
+uv run python -m app.main --init-db  # применить миграции и выйти
+# или вручную:
+uv run alembic upgrade head          # применить миграции до последней
+uv run alembic revision --autogenerate -m "описание"  # создать новую миграцию по моделям
 ```
 
 Тесты: `uv run pytest` (только БД-слой, без сети).

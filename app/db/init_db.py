@@ -1,18 +1,22 @@
 import asyncio
+from pathlib import Path
 
-from app.db.base import Base
-from app.db.engine import engine
+from alembic import command
+from alembic.config import Config
 
-# Ensure all models are registered in Base.metadata
-import app.db.models  # noqa: F401
+from app.config import get_settings
 
 
 async def init_db():
-    """Initializes the database and creates tables."""
-    async with engine.begin() as conn:
-        # await conn.run_sync(Base.metadata.drop_all) # Use for dropping tables if needed
-        await conn.run_sync(Base.metadata.create_all)
-    print("Database initialized.")
+    """Applies all Alembic migrations to bring the database schema up to date."""
+    root = Path(__file__).resolve().parents[2]
+
+    config = Config(str(root / "alembic.ini"))
+    config.set_main_option("script_location", str(root / "alembic"))
+    config.set_main_option("sqlalchemy.url", get_settings().database_url)
+
+    await asyncio.to_thread(command.upgrade, config, "head")
+    print("Database migrations applied.")
 
 
 if __name__ == "__main__":

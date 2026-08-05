@@ -22,13 +22,16 @@ async def main():
     parser.add_argument(
         "--init-db",
         action="store_true",
-        help="Initialize the database tables.",
+        help="Apply database migrations and exit.",
     )
     args = parser.parse_args()
 
     if args.init_db:
         await init_db()
         return
+
+    await init_db()
+    logger.info("Database migrations applied.")
 
     settings = get_settings()
     bot = create_bot(settings)
