@@ -22,9 +22,11 @@ class MorningService:
     START_TIME = time(9, 0)
     END_TIME = time(12, 0)
 
-    REMINDER_INTERVAL_MINUTES = 15
+    # Minutes between consecutive reminders, counted from START_TIME.
+    # Intervals shrink towards noon so the user is nudged more often.
+    REMINDER_INTERVALS = (30, 25, 20, 20, 20, 15, 15, 15, 15)
 
-    MAX_REMINDERS = 12
+    MAX_REMINDERS = 10
 
     async def evaluate(
         self,
@@ -43,7 +45,7 @@ class MorningService:
 
         reminder_number = activity.reminders_sent
 
-        expected_minutes = reminder_number * self.REMINDER_INTERVAL_MINUTES
+        expected_minutes = self._offset_minutes(reminder_number)
 
         current_minutes = (
             now.hour * 60
@@ -65,3 +67,8 @@ class MorningService:
             should_send=True,
             reminder_number=reminder_number + 1,
         )
+
+    @staticmethod
+    def _offset_minutes(reminder_number: int) -> int:
+        """Minutes from START_TIME when the given reminder is due."""
+        return sum(MorningService.REMINDER_INTERVALS[:reminder_number])
