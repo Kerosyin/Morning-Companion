@@ -37,7 +37,9 @@ scripts/bot-start.bat  # или: uv run python -m app.main
 
 ## Управление
 
-Скрипты в `scripts/` (`bot.ps1` и bat-обёртки):
+Скрипты в `scripts/`:
+
+**Windows** (`bot.ps1` и bat-обёртки):
 
 | Команда | Действие |
 | --- | --- |
@@ -50,6 +52,36 @@ scripts/bot-start.bat  # или: uv run python -m app.main
 | `bot-version` | текущая версия |
 | `bot-bump` | поднять версию в `pyproject.toml` |
 | `bot-release` | выпуск: bump + тег + GitHub release |
+
+**Linux (VPS)** (`bot.sh` и `.sh`-обёртки, управление через systemd):
+
+| Команда | Действие |
+| --- | --- |
+| `bot-start` | запустить службу `morning-companion` |
+| `bot-stop` | остановить |
+| `bot-restart` | перезапустить |
+| `bot-status` | статус службы |
+| `bot-logs [N]` | последние N строк логов (по умолчанию 50) |
+| `bot-watch` | живой просмотр логов |
+| `bot-version` | текущая версия |
+| `bot-update` | `git pull` + `uv sync` + restart |
+| `bot-deploy` | деплой: pull + установка службы + restart + статус + логи |
+| `bot-doctor` | диагностика: окружение, `.env`, БД, служба, диск, память, ошибки |
+
+На сервере сделайте скрипты исполняемыми: `chmod +x scripts/*.sh`.
+
+### Деплой на VPS (Ubuntu)
+
+```bash
+git clone https://github.com/Kerosyin/Morning-Companion.git /opt/Morning-Companion
+cd /opt/Morning-Companion
+sudo bash deploy/install.sh     # установит python/uv, службу systemd и зависимости
+nano .env                        # заполните токены
+./scripts/bot-start.sh           # запустить бота
+```
+
+Файл службы — [`deploy/morning-companion.service`](deploy/morning-companion.service).
+Управление — через `scripts/bot-*.sh` (systemd + journalctl).
 
 ## Документация
 

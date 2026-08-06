@@ -1,0 +1,13 @@
+[Unit]
+Description=Morning Companion Bot
+After=network.target
+
+[Service]
+WorkingDirectory=/opt/Morning-Companion
+EnvironmentFile=/opt/Morning-Companion/.env
+ExecStart=/root/.local/bin/uv run python -m app.main
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
