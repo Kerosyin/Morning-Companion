@@ -25,7 +25,7 @@ async def test_dialog_service_fallback_when_ai_fails(uow):
 
     result = await service.process_message(uow, TelegramMessageStub())
 
-    assert result == AI_UNAVAILABLE_REPLY
+    assert result.reply == AI_UNAVAILABLE_REPLY
 
 
 class TelegramMessageStub:

@@ -7,7 +7,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from .critical_event import CriticalEvent
     from .daily_activity import DailyActivity
+    from .health_checkin import HealthCheckin
     from .memory import Memory
     from .message import Message
 
@@ -50,5 +52,11 @@ class User(Base):
         back_populates="user", cascade="all, delete-orphan"
     )
     daily_activities: Mapped[List["DailyActivity"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    critical_events: Mapped[List["CriticalEvent"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    health_checkins: Mapped[List["HealthCheckin"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

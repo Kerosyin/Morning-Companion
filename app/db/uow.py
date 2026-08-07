@@ -6,7 +6,9 @@ from typing import Type
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories import (
+    CriticalEventRepository,
     DailyActivityRepository,
+    HealthCheckinRepository,
     MemoryRepository,
     MessageRepository,
     UserRepository,
@@ -18,6 +20,8 @@ class IUnitOfWork(ABC):
     messages: MessageRepository
     memories: MemoryRepository
     daily_activity: DailyActivityRepository
+    critical_events: CriticalEventRepository
+    health_checkins: HealthCheckinRepository
 
     @abstractmethod
     async def __aenter__(self):
@@ -47,6 +51,8 @@ class UnitOfWork(IUnitOfWork):
         self.messages = MessageRepository(self.session)
         self.memories = MemoryRepository(self.session)
         self.daily_activity = DailyActivityRepository(self.session)
+        self.critical_events = CriticalEventRepository(self.session)
+        self.health_checkins = HealthCheckinRepository(self.session)
 
         return self
 

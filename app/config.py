@@ -26,6 +26,14 @@ class Settings(BaseSettings):
 
     message_retention_days: int = Field(default=365, alias="MESSAGE_RETENTION_DAYS")
 
+    critical_alert_enabled: bool = Field(default=True, alias="CRITICAL_ALERT_ENABLED")
+    critical_alert_min_severity: str = Field(
+        default="high", alias="CRITICAL_ALERT_MIN_SEVERITY"
+    )
+    critical_alert_cooldown_minutes: int = Field(
+        default=120, alias="CRITICAL_ALERT_COOLDOWN_MINUTES"
+    )
+
     allowed_users: Annotated[list[int], NoDecode] = Field(
         default_factory=list, alias="ALLOWED_USERS"
     )

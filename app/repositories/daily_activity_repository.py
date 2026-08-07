@@ -39,3 +39,9 @@ class DailyActivityRepository(BaseRepository[DailyActivity]):
         Increments the reminders_sent counter for a daily activity.
         """
         return await self.update(activity, reminders_sent=activity.reminders_sent + 1)
+
+    async def mark_health_check_sent(self, activity: DailyActivity) -> DailyActivity:
+        """
+        Marks that the health check prompt was sent for this activity.
+        """
+        return await self.update(activity, health_check_sent=True)

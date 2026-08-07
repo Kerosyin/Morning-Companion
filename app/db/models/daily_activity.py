@@ -32,6 +32,9 @@ class DailyActivity(Base):
     admin_notified: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false"
     )
+    health_check_sent: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false"
+    )
 
     user: Mapped["User"] = relationship(back_populates="daily_activities")
 

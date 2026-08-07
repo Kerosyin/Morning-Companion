@@ -6,6 +6,7 @@ from aiogram import Bot
 
 from app.reminders.provider import ReminderProvider
 from app.services.morning_service import MorningService
+from app.telegram.health_poll import POLL_TEXT, build_rating_keyboard
 
 
 class MorningWorkflow:
@@ -60,5 +61,15 @@ class MorningWorkflow:
                 await uow.daily_activity.increment_reminders_sent(
                     activity,
                 )
+
+                if not activity.health_check_sent:
+                    await self.bot.send_message(
+                        chat_id=user.telegram_id,
+                        text=POLL_TEXT,
+                        reply_markup=build_rating_keyboard(),
+                    )
+                    await uow.daily_activity.mark_health_check_sent(
+                        activity,
+                    )
 
             await uow.commit()

@@ -1,14 +1,17 @@
 import logging
+from dataclasses import dataclass
 from datetime import datetime
 
 from aiogram.types import Message as TelegramMessage
 
+from app.ai.critical_event_detector import CriticalEvent, CriticalEventDetector
 from app.ai.memory_extractor import MemoryExtractor
 from app.ai.models import ConversationContext
 from app.ai.provider import AIProvider
 from app.db.models.message import MessageRole
 from app.db.uow import IUnitOfWork
 from app.services.conversation_service import ConversationService
+from app.services.critical_event_service import CriticalEventService
 from app.services.history_service import HistoryService
 from app.services.memory_service import MemoryService
 
@@ -17,6 +20,12 @@ logger = logging.getLogger("morning_companion")
 AI_UNAVAILABLE_REPLY = (
     "Извини, я на мгновение отвлёкся 😅 Попробуй написать ещё раз."
 )
+
+
+@dataclass
+class DialogResult:
+    reply: str
+    critical_event: CriticalEvent | None = None
 
 
 class DialogService:
@@ -28,8 +37,11 @@ class DialogService:
         self.conversation = ConversationService(provider)
         self.history_service = HistoryService()
         self.memory_service = MemoryService(MemoryExtractor(provider))
+        self.critical_events = CriticalEventService(CriticalEventDetector(provider))
 
-    async def process_message(self, uow: IUnitOfWork, message: TelegramMessage) -> str:
+    async def process_message(
+        self, uow: IUnitOfWork, message: TelegramMessage
+    ) -> DialogResult:
         """
         Processes a message from the user by interacting with the AI provider.
 
@@ -88,7 +100,7 @@ class DialogService:
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("ИИ не ответил (%s). Отправляю фолбэк.", exc)
-                return AI_UNAVAILABLE_REPLY
+                return DialogResult(reply=AI_UNAVAILABLE_REPLY)
             logger.info("ИИ ответил: %.100s", ai_response.reply)
 
             # 5. Save bot's reply
@@ -104,7 +116,17 @@ class DialogService:
             except Exception:  # noqa: BLE001
                 logger.exception("Извлечение памяти не удалось")
 
+            # 5.2 Best-effort critical event detection (must not break the reply)
+            critical_event = None
+            try:
+                critical_event = await self.critical_events.process(uow, context)
+            except Exception:  # noqa: BLE001
+                logger.exception("Обработка критичного события не удалась")
+
             await uow.commit()
 
             # 6. Return reply text
-            return ai_response.reply
+            return DialogResult(
+                reply=ai_response.reply,
+                critical_event=critical_event,
+            )
