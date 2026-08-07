@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     ai_provider: str = Field(default="openrouter", alias="AI_PROVIDER")
     model: str = Field(alias="MODEL")
     openrouter_api_key: str = Field(alias="OPENROUTER_API_KEY")
+    ai_request_timeout_seconds: int = Field(
+        default=30, alias="AI_REQUEST_TIMEOUT_SECONDS"
+    )
 
     timezone: str = Field(default="Europe/Moscow", alias="TIMEZONE")
     database_url: str = Field(alias="DATABASE_URL")

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import User
@@ -34,14 +35,19 @@ class UserRepository(BaseRepository[User]):
         if user:
             return user
 
-        user = await self.create(
-            telegram_id=telegram_id,
-            **defaults,
-        )
-
-        await self.session.flush()
-
-        return user
+        try:
+            async with self.session.begin_nested():
+                user = await self.create(
+                    telegram_id=telegram_id,
+                    **defaults,
+                )
+                await self.session.flush()
+            return user
+        except IntegrityError:
+            user = await self.get_by_telegram_id(telegram_id)
+            if user is not None:
+                return user
+            raise
 
     async def get_all(self) -> list[User]:
         """

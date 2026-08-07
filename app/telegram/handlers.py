@@ -1,5 +1,4 @@
 import logging
-from datetime import datetime
 from pathlib import Path
 
 from aiogram import Bot, Router
@@ -9,6 +8,7 @@ from aiogram.types import Message, User
 from app.ai.critical_event_detector import CriticalEvent
 from app.config import get_settings
 from app.container import get_container
+from app.core.clock import now_in_timezone
 from app.db.uow import IUnitOfWork
 from app.services.dialog_service import DialogService
 from app.services.health_check_service import HealthCheckService
@@ -68,10 +68,15 @@ async def process_user_message(message: Message, uow: IUnitOfWork):
     """
     # In the future, this will be handled by a proper DI container
     logger.info(
-        "Получено сообщение от %s: %s",
+        "Получено сообщение от %s: type=%s length=%d",
         message.from_user.id,
-        message.text or message.content_type,
+        message.content_type,
+        len(message.text or ""),
     )
+
+    if not message.text:
+        await message.answer("Пока я умею отвечать только на текстовые сообщения.")
+        return
 
     try:
         service: DialogService = get_container().dialog_service()
@@ -83,7 +88,9 @@ async def process_user_message(message: Message, uow: IUnitOfWork):
 
     await message.answer(result.reply)
 
-    _record_admin_notify(f"handler result.critical_event={result.critical_event!r}")
+    _record_admin_notify(
+        f"handler critical_event_present={result.critical_event is not None}"
+    )
 
     if result.critical_event is not None:
         await _notify_admin(message.bot, message.from_user, result.critical_event)
@@ -98,7 +105,9 @@ def _record_admin_notify(message: str) -> None:
         path = Path("data/logs")
         path.mkdir(parents=True, exist_ok=True)
         with open(path / "admin_notify.log", "a", encoding="utf-8") as fh:
-            fh.write(f"{datetime.now().isoformat(timespec='seconds')} | {message}\n")
+            fh.write(
+                f"{now_in_timezone().isoformat(timespec='seconds')} | {message}\n"
+            )
     except Exception:  # noqa: BLE001
         pass
 

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from aiogram import Bot
+
+from app.core.clock import now_in_timezone
 
 
 class AdminWorkflow:
@@ -26,7 +26,7 @@ class AdminWorkflow:
 
     async def execute(self) -> None:
 
-        now = datetime.now()
+        now = now_in_timezone()
 
         if now.hour < self.CHECK_HOUR:
             return

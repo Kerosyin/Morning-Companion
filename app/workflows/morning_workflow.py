@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-from datetime import datetime
-
 from aiogram import Bot
 
+from app.core.clock import now_in_timezone
 from app.reminders.provider import ReminderProvider
 from app.services.morning_service import MorningService
 from app.telegram.health_poll import POLL_TEXT, build_rating_keyboard
@@ -28,7 +27,7 @@ class MorningWorkflow:
 
     async def execute(self) -> None:
 
-        now = datetime.now()
+        now = now_in_timezone()
 
         async with self.uow_factory() as uow:
 

@@ -1,6 +1,5 @@
 import logging
 from dataclasses import dataclass
-from datetime import datetime
 
 from aiogram.types import Message as TelegramMessage
 
@@ -8,6 +7,7 @@ from app.ai.critical_event_detector import CriticalEvent, CriticalEventDetector
 from app.ai.memory_extractor import MemoryExtractor
 from app.ai.models import ConversationContext
 from app.ai.provider import AIProvider
+from app.core.clock import now_in_timezone
 from app.db.models.message import MessageRole
 from app.db.uow import IUnitOfWork
 from app.services.conversation_service import ConversationService
@@ -75,7 +75,7 @@ class DialogService:
             if activity.first_message_at is None:
                 await uow.daily_activity.set_first_message_time(
                     activity,
-                    datetime.now(),
+                    now_in_timezone().replace(tzinfo=None),
                 )
 
             # 3. Fetch conversation history and memories

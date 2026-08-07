@@ -1,7 +1,9 @@
-from datetime import date, datetime
+from datetime import datetime
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.clock import today_in_timezone
 from app.db.models import DailyActivity
 from app.repositories.base_repository import BaseRepository
 
@@ -14,17 +16,23 @@ class DailyActivityRepository(BaseRepository[DailyActivity]):
         """
         Gets today's activity for a user, creating one if it doesn't exist.
         """
-        today = date.today()
+        today = today_in_timezone()
         # Using get_by to find the specific record
         result = await self.get_by(user_id=user_id, date=today)
 
         if result:
             return result
 
-        # If not found, create a new one
-        activity = await self.create(user_id=user_id, date=today)
-        await self.session.flush()
-        return activity
+        try:
+            async with self.session.begin_nested():
+                activity = await self.create(user_id=user_id, date=today)
+                await self.session.flush()
+            return activity
+        except IntegrityError:
+            result = await self.get_by(user_id=user_id, date=today)
+            if result is not None:
+                return result
+            raise
 
     async def set_first_message_time(
         self, activity: DailyActivity, time: datetime

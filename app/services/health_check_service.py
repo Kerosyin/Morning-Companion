@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import logging
-from datetime import date
 
+from app.core.clock import today_in_timezone
 from app.db.uow import IUnitOfWork
 
 logger = logging.getLogger("morning_companion")
@@ -27,7 +27,9 @@ class HealthCheckService:
         self.days = days
 
     async def save(self, uow: IUnitOfWork, user_id: int, rating: int) -> int:
-        await uow.health_checkins.create_or_update(user_id, date.today(), rating)
+        await uow.health_checkins.create_or_update(
+            user_id, today_in_timezone(), rating
+        )
         return rating
 
     async def trend(self, uow: IUnitOfWork, user_id: int) -> str:

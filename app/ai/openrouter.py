@@ -19,6 +19,9 @@ class OpenRouterProvider(AIProvider):
         self.api_url = "https://openrouter.ai/api/v1/chat/completions"
         self.proxy = settings.proxy
         self.max_retries = 3
+        self.timeout = aiohttp.ClientTimeout(
+            total=settings.ai_request_timeout_seconds
+        )
 
     async def chat(self, context: ConversationContext) -> AIResponse:
         """
@@ -52,7 +55,7 @@ class OpenRouterProvider(AIProvider):
         }
         payload = {"model": self.model, "messages": messages}
 
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
             for attempt in range(self.max_retries):
                 logger.info(
                     "Запрос к OpenRouter (model=%s, attempt=%d/%d)",
