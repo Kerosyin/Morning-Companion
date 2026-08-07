@@ -16,8 +16,6 @@ def uow_factory():
 
 
 async def main():
-    logger = setup_logger()
-
     parser = argparse.ArgumentParser(description="Morning Companion Bot")
     parser.add_argument(
         "--init-db",
@@ -31,6 +29,12 @@ async def main():
         return
 
     await init_db()
+
+    # Configure logging AFTER init_db: alembic's env.py runs fileConfig()
+    # which resets the root logger (disable_existing_loggers=True). Setting
+    # up here makes sure our console + file handlers win and INFO logs of
+    # the bot are not silently dropped after migrations.
+    logger = setup_logger()
     logger.info("Database migrations applied.")
 
     settings = get_settings()
