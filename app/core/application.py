@@ -86,7 +86,10 @@ class Application:
 
         self.scheduler.start()
 
-        await self._polling_loop()
+        try:
+            await self._polling_loop()
+        finally:
+            await self.stop()
 
     async def _polling_loop(self):
         while True:
@@ -103,6 +106,9 @@ class Application:
 
     async def stop(self):
 
-        await self.scheduler.shutdown()
+        logger.info("Application stopping...")
 
+        await self.scheduler.shutdown()
         await self.bot.session.close()
+
+        logger.info("Scheduler stopped, bot session closed")
