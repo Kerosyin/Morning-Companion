@@ -9,9 +9,10 @@ from app.telegram.middleware.uow import UoWMiddleware
 def create_dispatcher(allowed_users: list[int]) -> Dispatcher:
     dp = Dispatcher()
 
-    # Register middlewares
-    # The last registered middleware is the outermost one,
-    # so AccessMiddleware wraps UoWMiddleware and blocks strangers first.
+    # In aiogram 3 the first registered middleware is the outermost one.
+    # UoWMiddleware only constructs the UnitOfWork (no session is opened
+    # in the middleware itself), so access blocking still happens before
+    # any DB work inside the handler.
     dp.message.middleware(UoWMiddleware())
     dp.message.middleware(AccessMiddleware(allowed_users))
     dp.callback_query.middleware(UoWMiddleware())

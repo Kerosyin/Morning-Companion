@@ -10,12 +10,12 @@ logger = logging.getLogger("morning_companion")
 # Maps a rating (1-5) to a filled emoji bar out of 5 blocks.
 _RATING_FILLED = {
     1: "█",
-    2: "█",
-    3: "██",
-    4: "███",
-    5: "████",
+    2: "██",
+    3: "███",
+    4: "████",
+    5: "█████",
 }
-_FULL = "█████"
+_EMPTY = "░"
 
 
 class HealthCheckService:
@@ -42,10 +42,10 @@ class HealthCheckService:
         lines = [f"📊 Самочувствие за {len(checkins)} дн. (среднее {average:.1f}/5)"]
         for checkin in checkins:
             filled = _RATING_FILLED.get(checkin.rating, "█")
+            bar = f"{filled}{_EMPTY * (5 - len(filled))}"
             weekend = "" if checkin.date.weekday() < 5 else " 🎉"
             lines.append(
-                f"{checkin.date:%d.%m} {filled}{_FULL[len(filled):]}"
-                f"  {checkin.rating}{weekend}"
+                f"{checkin.date:%d.%m} {bar}  {checkin.rating}{weekend}"
             )
 
         return "\n".join(lines)

@@ -1,5 +1,5 @@
-from dataclasses import dataclass, field
-from typing import List, Optional
+from dataclasses import dataclass
+from typing import List
 
 from app.db.models import Memory, Message, User
 
@@ -10,9 +10,6 @@ class AIResponse:
     Represents a structured response from an AI provider.
     """
     reply: str
-    memory_updates: list = field(default_factory=list)
-    mood: Optional[str] = None
-    summary: Optional[str] = None
 
 
 @dataclass

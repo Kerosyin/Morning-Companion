@@ -95,6 +95,9 @@ class Application:
         while True:
             try:
                 await self.dispatcher.start_polling(self.bot)
+                # start_polling returned normally → polling was stopped
+                # (e.g. via stop_polling()). Exit instead of restarting.
+                break
             except (TelegramAPIError, OSError, aiohttp.ClientError) as exc:
                 logger.warning("Поллинг прерван (%s). Перезапускаю через 5с...", exc)
                 await asyncio.sleep(5)

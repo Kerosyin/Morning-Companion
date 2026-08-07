@@ -16,7 +16,7 @@ class MessageRepository(BaseRepository[Message]):
         Deletes messages older than the given number of days and
         returns the number of deleted rows.
         """
-        cutoff = datetime.now(timezone.utc)
+        cutoff = datetime.now(timezone.utc).replace(tzinfo=None)
         stmt = (
             delete(self.model)
             .where(self.model.created_at < cutoff - timedelta(days=days))

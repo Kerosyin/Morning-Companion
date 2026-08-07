@@ -26,13 +26,17 @@ class MemoryRepository(BaseRepository[Memory]):
         """
         return await self.get_by(user_id=user.id, key=key)
 
-    async def set_memory(self, user: User, key: str, value: str) -> Memory:
+    async def set_memory(
+        self, user: User, key: str, value: str, category: str = "general"
+    ) -> Memory:
         """
         Creates or updates a memory for a user.
         The session must be committed by the Unit of Work.
         """
         memory = await self.get_memory(user, key)
         if memory:
-            return await self.update(memory, value=value)
+            return await self.update(memory, value=value, category=category)
 
-        return await self.create(user_id=user.id, key=key, value=value)
+        return await self.create(
+            user_id=user.id, key=key, value=value, category=category
+        )

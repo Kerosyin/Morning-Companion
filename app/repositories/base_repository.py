@@ -43,9 +43,3 @@ class BaseRepository(Generic[ModelType]):
             if hasattr(instance, key):
                 setattr(instance, key, value)
         return instance
-
-    async def delete(self, instance: ModelType) -> None:
-        """
-        Marks an instance for deletion.
-        """
-        await self.session.delete(instance)

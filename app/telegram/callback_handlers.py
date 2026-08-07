@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 
 from aiogram import F, Router
+from aiogram.exceptions import TelegramAPIError
 from aiogram.types import CallbackQuery
 
 from app.db.uow import IUnitOfWork
@@ -35,7 +36,11 @@ async def health_rating(callback: CallbackQuery, uow: IUnitOfWork):
         await health_service.save(uow, user.id, rating)
         await uow.commit()
 
-    await callback.message.edit_text(
-        f"Спасибо! Сегодня твоё самочувствие: {rating}/5 ✅"
-    )
-    await callback.answer()
+    try:
+        await callback.message.edit_text(
+            f"Спасибо! Сегодня твоё самочувствие: {rating}/5 ✅"
+        )
+    except (TelegramAPIError, AttributeError) as exc:
+        logger.debug("edit_text в callback не выполнен: %s", exc)
+    finally:
+        await callback.answer()

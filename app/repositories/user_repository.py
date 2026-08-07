@@ -60,26 +60,3 @@ class UserRepository(BaseRepository[User]):
         )
 
         return list(result.scalars().all())
-
-    async def get_users_by_timezone(
-        self,
-        timezone: str,
-    ) -> list[User]:
-
-        result = await self.session.execute(
-            select(User)
-            .where(User.timezone == timezone)
-            .order_by(User.id)
-        )
-
-        return list(result.scalars().all())
-
-    async def get_active_users(self) -> list[User]:
-        """
-        Placeholder.
-
-        Later this method will return only users
-        who have not disabled reminders.
-        """
-
-        return await self.get_all()

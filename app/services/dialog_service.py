@@ -63,22 +63,10 @@ class DialogService:
                 },
             )
 
-            # 2. Save user's message
-            await uow.messages.create(
-                user_id=user.id,
-                role=MessageRole.USER,
-                text=message.text
-            )
-
-            # 2.1 Stop morning reminders once the user replies today
-            activity = await uow.daily_activity.get_or_create_today(user.id)
-            if activity.first_message_at is None:
-                await uow.daily_activity.set_first_message_time(
-                    activity,
-                    now_in_timezone().replace(tzinfo=None),
-                )
-
-            # 3. Fetch conversation history and memories
+            # 2. Fetch conversation history BEFORE saving the current message.
+            # Otherwise autoflush would include it in the history, and
+            # ContextBuilder appends the current message separately, so it
+            # would reach the LLM twice.
             history = await uow.messages.get_history(user=user, limit=15)
             history = self.history_service.prepare(history)
             memories = await uow.memories.get_all_for_user(user=user)
@@ -89,6 +77,22 @@ class DialogService:
                 memories=memories,
                 message=message.text,
             )
+
+            # 3. Save the user's message and mark today's first reply so the
+            # morning reminders stop. Done before the AI call so that a
+            # provider failure still persists this data (committed below).
+            await uow.messages.create(
+                user_id=user.id,
+                role=MessageRole.USER,
+                text=message.text,
+            )
+
+            activity = await uow.daily_activity.get_or_create_today(user.id)
+            if activity.first_message_at is None:
+                await uow.daily_activity.set_first_message_time(
+                    activity,
+                    now_in_timezone().replace(tzinfo=None),
+                )
 
             # 3.1 Detect critical events BEFORE the AI reply. The keyword gate
             # is local (no LLM needed), so an alert must still reach the admin
@@ -105,13 +109,10 @@ class DialogService:
                 getattr(self.conversation.provider, "model", "n/a"),
             )
             try:
-                ai_response = await self.conversation.reply(
-                    context,
-                )
+                ai_response = await self.conversation.reply(context)
             except Exception as exc:  # noqa: BLE001
                 logger.warning("ИИ не ответил (%s). Отправляю фолбэк.", exc)
-                if critical_event is not None:
-                    await uow.commit()
+                await uow.commit()
                 return DialogResult(
                     reply=AI_UNAVAILABLE_REPLY,
                     critical_event=critical_event,

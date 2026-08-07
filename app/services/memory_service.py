@@ -35,8 +35,9 @@ class MemoryService:
 
             await uow.memories.set_memory(
                 user=context.user,
-                key=f"{memory.category}:{memory.key}",
+                key=memory.key,
                 value=memory.value,
+                category=memory.category,
             )
 
         logger.info(

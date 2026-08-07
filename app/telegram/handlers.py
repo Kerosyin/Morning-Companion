@@ -66,7 +66,6 @@ async def process_user_message(message: Message, uow: IUnitOfWork):
     """
     Handles any user message, processes it via DialogService, and sends a reply.
     """
-    # In the future, this will be handled by a proper DI container
     logger.info(
         "Получено сообщение от %s: type=%s length=%d",
         message.from_user.id,

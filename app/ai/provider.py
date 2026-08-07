@@ -29,9 +29,8 @@ class AIProvider(ABC):
         """
         Small one-shot request.
 
-        Used by:
-        - MemoryExtractor
-        - DailySummary
-        - MoodAnalyzer
+        Used by auxiliary pipelines (e.g. MemoryExtractor,
+        CriticalEventDetector) that do not need the full
+        ConversationContext.
         """
         raise NotImplementedError

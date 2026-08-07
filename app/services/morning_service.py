@@ -11,7 +11,6 @@ from app.db.uow import IUnitOfWork
 class ReminderDecision:
     should_send: bool
     reminder_number: int = 0
-    notify_admin: bool = False
 
 
 class MorningService:
@@ -57,11 +56,7 @@ class MorningService:
             return ReminderDecision(False)
 
         if reminder_number >= self.MAX_REMINDERS:
-
-            return ReminderDecision(
-                should_send=False,
-                notify_admin=not activity.admin_notified,
-            )
+            return ReminderDecision(should_send=False)
 
         return ReminderDecision(
             should_send=True,

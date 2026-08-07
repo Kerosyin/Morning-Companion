@@ -81,6 +81,12 @@ Rules:
 
             return []
 
+        if not isinstance(raw, list):
+
+            logger.warning("Memory extractor returned non-list JSON.")
+
+            return []
+
         memories: list[MemoryUpdate] = []
 
         for item in raw:

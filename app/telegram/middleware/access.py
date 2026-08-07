@@ -22,11 +22,11 @@ class AccessMiddleware(BaseMiddleware):
         if user is not None and user.id in self.allowed_users:
             return await handler(event, data)
 
-        message = data.get("event_message")
-        if message is not None:
+        answer = getattr(event, "answer", None)
+        if answer is not None:
             try:
-                await message.answer("⛔ Извините, этот бот является приватным.")
-            except Exception:
+                await answer("⛔ Извините, этот бот является приватным.")
+            except Exception:  # noqa: BLE001
                 pass
 
         return None
