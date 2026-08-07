@@ -83,6 +83,8 @@ async def process_user_message(message: Message, uow: IUnitOfWork):
 
     await message.answer(result.reply)
 
+    _record_admin_notify(f"handler result.critical_event={result.critical_event!r}")
+
     if result.critical_event is not None:
         await _notify_admin(message.bot, message.from_user, result.critical_event)
 
