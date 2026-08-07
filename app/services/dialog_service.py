@@ -7,6 +7,7 @@ from app.ai.critical_event_detector import CriticalEvent, CriticalEventDetector
 from app.ai.memory_extractor import MemoryExtractor
 from app.ai.models import ConversationContext
 from app.ai.provider import AIProvider
+from app.config import get_settings
 from app.core.clock import now_in_timezone
 from app.db.models.message import MessageRole
 from app.db.uow import IUnitOfWork
@@ -71,11 +72,15 @@ class DialogService:
             history = self.history_service.prepare(history)
             memories = await uow.memories.get_all_for_user(user=user)
 
+            # Cap the message length sent to the LLM. The full message is
+            # still persisted below; only the LLM context gets a truncated
+            # copy (token-burn / abuse protection).
+            max_len = get_settings().message_max_length
             context = ConversationContext(
                 user=user,
                 history=history,
                 memories=memories,
-                message=message.text,
+                message=message.text[:max_len],
             )
 
             # 3. Save the user's message and mark today's first reply so the

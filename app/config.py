@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     database_url: str = Field(alias="DATABASE_URL")
 
     message_retention_days: int = Field(default=365, alias="MESSAGE_RETENTION_DAYS")
+    message_max_length: int = Field(default=2000, alias="MESSAGE_MAX_LENGTH")
+
+    rate_limit_max_messages: int = Field(
+        default=10, alias="RATE_LIMIT_MAX_MESSAGES"
+    )
+    rate_limit_window_seconds: int = Field(
+        default=60, alias="RATE_LIMIT_WINDOW_SECONDS"
+    )
 
     critical_alert_enabled: bool = Field(default=True, alias="CRITICAL_ALERT_ENABLED")
     critical_alert_min_severity: str = Field(

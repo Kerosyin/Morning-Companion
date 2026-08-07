@@ -50,6 +50,12 @@ async def stats(message: Message, uow: IUnitOfWork):
             command_parts = message.text.split()
             if len(command_parts) > 1 and command_parts[1].isdigit():
                 target = int(command_parts[1])
+                if target != message.from_user.id:
+                    logger.info(
+                        "Админ %s запрашивает /stats пользователя %s",
+                        message.from_user.id,
+                        target,
+                    )
 
         user = await uow.users.get_by_telegram_id(target)
         if user is None:

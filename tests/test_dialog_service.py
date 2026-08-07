@@ -97,3 +97,30 @@ async def test_current_message_not_duplicated_in_llm_context(uow):
     ]
     assert stub.text not in history_texts
     assert provider.last_context.message == stub.text
+
+
+async def test_long_message_truncated_for_llm_but_persisted_full(uow):
+    """Security: a huge message is capped before reaching the LLM (token-burn
+    / abuse protection), while the full text is still stored in the database."""
+    from app.config import get_settings
+
+    max_len = get_settings().message_max_length
+    long_text = "а" * (max_len + 500)
+
+    provider = SpyProvider()
+    service = DialogService(provider=provider)
+    stub = TelegramMessageStub(text=long_text)
+
+    await service.process_message(uow, stub)
+
+    assert provider.last_context is not None
+    assert len(provider.last_context.message) == max_len
+
+    async with uow:
+        user = await uow.users.get_by_telegram_id(stub.from_user.id)
+        messages = (
+            await uow.session.execute(
+                select(Message).where(Message.user_id == user.id)
+            )
+        ).scalars().all()
+    assert messages[0].text == long_text
