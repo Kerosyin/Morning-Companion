@@ -83,13 +83,23 @@ class DialogService:
             history = self.history_service.prepare(history)
             memories = await uow.memories.get_all_for_user(user=user)
 
-            # 4. Generate reply
             context = ConversationContext(
                 user=user,
                 history=history,
                 memories=memories,
                 message=message.text,
             )
+
+            # 3.1 Detect critical events BEFORE the AI reply. The keyword gate
+            # is local (no LLM needed), so an alert must still reach the admin
+            # even if the AI provider is down.
+            critical_event = None
+            try:
+                critical_event = await self.critical_events.process(uow, context)
+            except Exception:  # noqa: BLE001
+                logger.exception("Обработка критичного события не удалась")
+
+            # 4. Generate reply
             logger.info(
                 "Запрашиваю ответ у ИИ (OpenRouter, model=%s)",
                 getattr(self.conversation.provider, "model", "n/a"),
@@ -100,7 +110,12 @@ class DialogService:
                 )
             except Exception as exc:  # noqa: BLE001
                 logger.warning("ИИ не ответил (%s). Отправляю фолбэк.", exc)
-                return DialogResult(reply=AI_UNAVAILABLE_REPLY)
+                if critical_event is not None:
+                    await uow.commit()
+                return DialogResult(
+                    reply=AI_UNAVAILABLE_REPLY,
+                    critical_event=critical_event,
+                )
             logger.info("ИИ ответил: %.100s", ai_response.reply)
 
             # 5. Save bot's reply
@@ -115,13 +130,6 @@ class DialogService:
                 await self.memory_service.update(uow, context)
             except Exception:  # noqa: BLE001
                 logger.exception("Извлечение памяти не удалось")
-
-            # 5.2 Best-effort critical event detection (must not break the reply)
-            critical_event = None
-            try:
-                critical_event = await self.critical_events.process(uow, context)
-            except Exception:  # noqa: BLE001
-                logger.exception("Обработка критичного события не удалась")
 
             await uow.commit()
 
