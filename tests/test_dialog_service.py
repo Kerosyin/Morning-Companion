@@ -1,8 +1,9 @@
 import pytest
+from sqlalchemy import select
 
-from app.ai.models import ConversationContext
+from app.ai.models import AIResponse, ConversationContext
 from app.ai.provider import AIProvider
-from app.container import get_container, reset_container
+from app.db.models import Message
 from app.services.dialog_service import AI_UNAVAILABLE_REPLY, DialogService
 
 pytestmark = pytest.mark.asyncio
@@ -16,16 +17,19 @@ class FailingProvider(AIProvider):
         raise RuntimeError("provider down")
 
 
-async def test_dialog_service_fallback_when_ai_fails(uow):
-    reset_container()
-    container = get_container()
-    container.set_provider(FailingProvider())
+class SpyProvider(AIProvider):
+    """Records the context handed to chat() so a test can assert on it."""
 
-    service = DialogService(provider=container.provider)
+    def __init__(self, reply: str = "ок"):
+        self.reply = reply
+        self.last_context: ConversationContext | None = None
 
-    result = await service.process_message(uow, TelegramMessageStub())
+    async def chat(self, context: ConversationContext) -> AIResponse:
+        self.last_context = context
+        return AIResponse(reply=self.reply)
 
-    assert result.reply == AI_UNAVAILABLE_REPLY
+    async def simple_chat(self, system_prompt: str, user_prompt: str):
+        return "[]"
 
 
 class TelegramMessageStub:
@@ -36,4 +40,60 @@ class TelegramMessageStub:
         last_name = None
 
     from_user = _FromUser()
-    text = "привет"
+
+    def __init__(self, text: str = "привет"):
+        self.text = text
+
+
+async def test_dialog_service_fallback_when_ai_fails(uow):
+    service = DialogService(provider=FailingProvider())
+
+    result = await service.process_message(uow, TelegramMessageStub())
+
+    assert result.reply == AI_UNAVAILABLE_REPLY
+
+
+async def test_user_message_persisted_when_ai_fails(uow):
+    """Bug 1: even when the AI provider fails, the user's message and the
+    first_message_at flag must be committed (not silently dropped)."""
+    service = DialogService(provider=FailingProvider())
+    stub = TelegramMessageStub(text="сохрани меня")
+
+    result = await service.process_message(uow, stub)
+
+    assert result.reply == AI_UNAVAILABLE_REPLY
+
+    async with uow:
+        user = await uow.users.get_by_telegram_id(stub.from_user.id)
+        assert user is not None
+
+        messages = (
+            await uow.session.execute(
+                select(Message).where(Message.user_id == user.id)
+            )
+        ).scalars().all()
+        assert len(messages) == 1
+        assert messages[0].text == "сохрани меня"
+
+        activity = await uow.daily_activity.get_or_create_today(user.id)
+        assert activity.first_message_at is not None
+
+
+async def test_current_message_not_duplicated_in_llm_context(uow):
+    """Bug 3: the user's current message must not be both saved-then-read as
+    history and appended again by ContextBuilder (would reach the LLM twice).
+    History is fetched before saving, so it must not contain the message."""
+    provider = SpyProvider()
+    service = DialogService(provider=provider)
+    stub = TelegramMessageStub(text="совершенно-уникальная-фраза-xyz")
+
+    await service.process_message(uow, stub)
+
+    assert provider.last_context is not None
+    history_texts = [
+        m.text
+        for m in provider.last_context.history
+        if m.role.value == "user"
+    ]
+    assert stub.text not in history_texts
+    assert provider.last_context.message == stub.text

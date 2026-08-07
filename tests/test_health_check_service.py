@@ -63,3 +63,37 @@ async def test_trend_empty(uow):
         report = await HealthCheckService().trend(uow, user_id)
 
     assert "нет данных" in report
+
+
+async def test_trend_bar_reflects_rating(uow):
+    """Bug 2: the bar must mirror the rating (3 filled + 2 empty for rating 3),
+    not always render as a fully filled bar."""
+    user_id = await make_user(uow)
+
+    async with uow:
+        await uow.health_checkins.create_or_update(user_id, date.today(), 3)
+        await uow.commit()
+
+    service = HealthCheckService(days=7)
+    async with uow:
+        report = await service.trend(uow, user_id)
+
+    assert "███░░" in report
+    assert "█████" not in report
+
+
+async def test_trend_bar_full_for_rating_5(uow):
+    """Bug 2: rating 5 renders a fully filled bar with no empty blocks."""
+    user_id = await make_user(uow)
+
+    async with uow:
+        await uow.health_checkins.create_or_update(user_id, date.today(), 5)
+        await uow.commit()
+
+    service = HealthCheckService(days=7)
+    async with uow:
+        report = await service.trend(uow, user_id)
+
+    assert "█████" in report
+    assert "░" not in report
+
