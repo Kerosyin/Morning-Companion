@@ -113,13 +113,14 @@ async def _notify_admin(bot: Bot, user: User, event: CriticalEvent) -> None:
     username = f"@{user.username}" if user.username else "не указан"
     name = user.first_name or user.username or str(user.id)
     category = CATEGORY_LABELS.get(event.event_type, event.event_type)
+    severity = getattr(event.severity, "value", event.severity)
     text = (
         "🚨 Критичное сообщение от пользователя\n\n"
         f"Имя: {name}\n"
         f"Username: {username}\n"
         f"Telegram ID: {user.id}\n\n"
         f"Категория: {category}\n"
-        f"Уровень: {event.severity.value}\n"
+        f"Уровень: {severity}\n"
         f"Суть: {event.description}\n\n"
         "Пожалуйста, свяжитесь с пользователем."
     )
