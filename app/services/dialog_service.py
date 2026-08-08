@@ -27,6 +27,7 @@ AI_UNAVAILABLE_REPLY = (
 class DialogResult:
     reply: str
     critical_event: CriticalEvent | None = None
+    health_poll_pending: bool = False
 
 
 class DialogService:
@@ -93,11 +94,15 @@ class DialogService:
             )
 
             activity = await uow.daily_activity.get_or_create_today(user.id)
+            health_poll_pending = False
             if activity.first_message_at is None:
-                await uow.daily_activity.set_first_message_time(
+                activity = await uow.daily_activity.set_first_message_time(
                     activity,
                     now_in_timezone().replace(tzinfo=None),
                 )
+                if not activity.health_check_sent:
+                    await uow.daily_activity.mark_health_check_sent(activity)
+                    health_poll_pending = True
 
             # 3.1 Detect critical events BEFORE the AI reply. The keyword gate
             # is local (no LLM needed), so an alert must still reach the admin
@@ -121,6 +126,7 @@ class DialogService:
                 return DialogResult(
                     reply=AI_UNAVAILABLE_REPLY,
                     critical_event=critical_event,
+                    health_poll_pending=health_poll_pending,
                 )
             logger.info("ИИ ответил: %.100s", ai_response.reply)
 
@@ -143,4 +149,5 @@ class DialogService:
             return DialogResult(
                 reply=ai_response.reply,
                 critical_event=critical_event,
+                health_poll_pending=health_poll_pending,
             )

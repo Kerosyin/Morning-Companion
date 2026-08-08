@@ -124,3 +124,30 @@ async def test_long_message_truncated_for_llm_but_persisted_full(uow):
             )
         ).scalars().all()
     assert messages[0].text == long_text
+
+
+async def test_health_poll_pending_on_first_message(uow):
+    """Health poll must be requested on the first message of the day."""
+    provider = SpyProvider()
+    service = DialogService(provider=provider)
+    stub = TelegramMessageStub(text="привет")
+
+    result = await service.process_message(uow, stub)
+
+    assert result.health_poll_pending is True
+
+    async with uow:
+        user = await uow.users.get_by_telegram_id(stub.from_user.id)
+        activity = await uow.daily_activity.get_or_create_today(user.id)
+    assert activity.health_check_sent is True
+
+
+async def test_health_poll_not_pending_on_subsequent_message(uow):
+    """Health poll must not be requested again on the same day."""
+    provider = SpyProvider()
+    service = DialogService(provider=provider)
+
+    await service.process_message(uow, TelegramMessageStub(text="первое"))
+    result = await service.process_message(uow, TelegramMessageStub(text="второе"))
+
+    assert result.health_poll_pending is False

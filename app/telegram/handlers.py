@@ -12,6 +12,7 @@ from app.core.clock import now_in_timezone
 from app.db.uow import IUnitOfWork
 from app.services.dialog_service import DialogService
 from app.services.health_check_service import HealthCheckService
+from app.telegram.health_poll import POLL_TEXT, build_rating_keyboard
 
 logger = logging.getLogger("morning_companion")
 
@@ -92,6 +93,14 @@ async def process_user_message(message: Message, uow: IUnitOfWork):
         return
 
     await message.answer(result.reply)
+
+    if result.health_poll_pending and result.critical_event is None:
+        await message.bot.send_message(
+            chat_id=message.from_user.id,
+            text=POLL_TEXT,
+            reply_markup=build_rating_keyboard(),
+        )
+        logger.info("Отправлен health poll пользователю %s", message.from_user.id)
 
     _record_admin_notify(
         f"handler critical_event_present={result.critical_event is not None}"

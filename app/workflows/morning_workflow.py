@@ -8,7 +8,6 @@ from aiogram.exceptions import TelegramAPIError
 from app.core.clock import now_in_timezone
 from app.reminders.provider import ReminderProvider
 from app.services.morning_service import MorningService
-from app.telegram.health_poll import POLL_TEXT, build_rating_keyboard
 
 logger = logging.getLogger("morning_companion")
 
@@ -72,16 +71,6 @@ class MorningWorkflow:
                         await uow.daily_activity.increment_reminders_sent(
                             activity,
                         )
-
-                        if not activity.health_check_sent:
-                            await self.bot.send_message(
-                                chat_id=user.telegram_id,
-                                text=POLL_TEXT,
-                                reply_markup=build_rating_keyboard(),
-                            )
-                            await uow.daily_activity.mark_health_check_sent(
-                                activity,
-                            )
 
                     # Commit per user so a failure on one user does not roll
                     # back the reminders/poll already sent to the others.

@@ -31,8 +31,8 @@ async def _make_user(uow, telegram_id: int) -> int:
 
 async def test_failed_send_for_one_user_does_not_rollback_others(uow, monkeypatch):
     """Bug 4: a send failure for one user must be isolated (commit per user);
-    users already notified must keep their reminders_sent / health_check flag
-    instead of being rolled back and re-notified on the next run."""
+    users already notified must keep their reminders_sent instead of being
+    rolled back and re-notified on the next run."""
     import app.workflows.morning_workflow as mw
 
     monkeypatch.setattr(
@@ -58,4 +58,4 @@ async def test_failed_send_for_one_user_does_not_rollback_others(uow, monkeypatc
 
     assert a1.reminders_sent == 0
     assert a2.reminders_sent == 1
-    assert a2.health_check_sent is True
+    assert a2.health_check_sent is False
