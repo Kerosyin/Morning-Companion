@@ -3,6 +3,7 @@ Name: morning-companion
 Version: 0.1.0
 Summary: Daily AI Telegram companion
 Requires-Python: >=3.12
+License-File: LICENSE
 Requires-Dist: aiogram>=3.22.0
 Requires-Dist: sqlalchemy>=2.0
 Requires-Dist: aiosqlite
@@ -11,3 +12,7 @@ Requires-Dist: aiohttp
 Requires-Dist: python-dotenv
 Requires-Dist: pydantic>=2
 Requires-Dist: pydantic-settings
+Requires-Dist: aiohttp-socks>=0.11.0
+Requires-Dist: alembic>=1.19.0
+Requires-Dist: matplotlib>=3.8
+Dynamic: license-file

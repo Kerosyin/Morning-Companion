@@ -1,4 +1,5 @@
-from functools import lru_cache
+from __future__ import annotations
+
 from typing import Annotated
 
 from pydantic import Field, field_validator
@@ -71,6 +72,29 @@ class Settings(BaseSettings):
         return normalized
 
 
-@lru_cache
+# Global settings instance - initialized lazily to avoid import-time failures
+_settings: Settings | None = None
+
+
 def get_settings() -> Settings:
-    return Settings()
+    """Get global settings instance.
+
+    Creates the instance on first call to allow imports without .env file.
+    Use set_settings() for testing with custom configuration.
+    """
+    global _settings
+    if _settings is None:
+        _settings = Settings()
+    return _settings
+
+
+def set_settings(settings: Settings) -> None:
+    """Set global settings instance (mainly for tests)."""
+    global _settings
+    _settings = settings
+
+
+def reset_settings() -> None:
+    """Reset global settings to force re-initialization."""
+    global _settings
+    _settings = None

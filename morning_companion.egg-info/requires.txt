@@ -6,3 +6,6 @@ aiohttp
 python-dotenv
 pydantic>=2
 pydantic-settings
+aiohttp-socks>=0.11.0
+alembic>=1.19.0
+matplotlib>=3.8
