@@ -53,3 +53,27 @@ async def test_non_list_json_returns_empty():
     for payload in ("null", "{}", "42", "\"строка\""):
         extractor = MemoryExtractor(FakeProvider(payload))
         assert await extractor.extract(make_context("x")) == []
+
+
+async def test_normalizes_and_filters_memory_fields():
+    extractor = MemoryExtractor(
+        FakeProvider(
+            """[
+                {"category": " pets ", "key": " dog ", "value": " Rex "},
+                {"category": "", "key": "empty-value", "value": ""},
+                ["not", "a", "dict"],
+                {"key": "long", "value": "%s"}
+            ]"""
+            % ("x" * 250)
+        )
+    )
+
+    result = await extractor.extract(make_context("x"))
+
+    assert len(result) == 2
+    assert result[0].category == "pets"
+    assert result[0].key == "dog"
+    assert result[0].value == "Rex"
+    assert result[1].category == "general"
+    assert result[1].key == "long"
+    assert len(result[1].value) == 200

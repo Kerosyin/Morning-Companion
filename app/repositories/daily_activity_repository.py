@@ -48,6 +48,19 @@ class DailyActivityRepository(BaseRepository[DailyActivity]):
         """
         return await self.update(activity, reminders_sent=activity.reminders_sent + 1)
 
+    async def mark_reminder_sent(
+        self,
+        activity: DailyActivity,
+        reminder_number: int,
+    ) -> DailyActivity:
+        """
+        Records that a concrete reminder number has been sent.
+        """
+        return await self.update(
+            activity,
+            reminders_sent=max(activity.reminders_sent, reminder_number),
+        )
+
     async def mark_health_check_sent(self, activity: DailyActivity) -> DailyActivity:
         """
         Marks that the health check prompt was sent for this activity.

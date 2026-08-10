@@ -55,7 +55,6 @@ class DialogService:
         6. Returns the reply text.
         """
         async with uow:
-            # 1. Find or create user
             user = await uow.users.get_or_create(
                 telegram_id=message.from_user.id,
                 defaults={
@@ -65,7 +64,7 @@ class DialogService:
                 },
             )
 
-            # 2. Fetch conversation history BEFORE saving the current message.
+            # Fetch conversation history BEFORE saving the current message.
             # Otherwise autoflush would include it in the history, and
             # ContextBuilder appends the current message separately, so it
             # would reach the LLM twice.
@@ -84,9 +83,9 @@ class DialogService:
                 message=message.text[:max_len],
             )
 
-            # 3. Save the user's message and mark today's first reply so the
+            # Save the user's message and mark today's first reply so the
             # morning reminders stop. Done before the AI call so that a
-            # provider failure still persists this data (committed below).
+            # provider failure still persists this data.
             await uow.messages.create(
                 user_id=user.id,
                 role=MessageRole.USER,
@@ -104,50 +103,72 @@ class DialogService:
                     await uow.daily_activity.mark_health_check_sent(activity)
                     health_poll_pending = True
 
-            # 3.1 Detect critical events BEFORE the AI reply. The keyword gate
-            # is local (no LLM needed), so an alert must still reach the admin
-            # even if the AI provider is down.
-            critical_event = None
-            try:
-                critical_event = await self.critical_events.process(uow, context)
-            except Exception:  # noqa: BLE001
-                logger.exception("Обработка критичного события не удалась")
+            await uow.commit()
 
-            # 4. Generate reply
-            logger.info(
-                "Запрашиваю ответ у ИИ (OpenRouter, model=%s)",
-                getattr(self.conversation.provider, "model", "n/a"),
+        # Detect critical events BEFORE the AI reply. Weak-signal detection may
+        # call the LLM, so it runs outside the DB transaction.
+        critical_event = None
+        try:
+            detection = await self.critical_events.detect(context)
+            if detection is not None:
+                async with uow:
+                    critical_event = await self.critical_events.persist(
+                        uow,
+                        context.user.id,
+                        context.message,
+                        detection,
+                    )
+                    await uow.commit()
+        except Exception:  # noqa: BLE001
+            logger.exception("Обработка критичного события не удалась")
+
+        logger.info(
+            "Запрашиваю ответ у ИИ (OpenRouter, model=%s)",
+            getattr(self.conversation.provider, "model", "n/a"),
+        )
+        try:
+            ai_response = await self.conversation.reply(context)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("ИИ не ответил (%s). Отправляю фолбэк.", exc)
+            return DialogResult(
+                reply=AI_UNAVAILABLE_REPLY,
+                critical_event=critical_event,
+                health_poll_pending=health_poll_pending,
             )
-            try:
-                ai_response = await self.conversation.reply(context)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("ИИ не ответил (%s). Отправляю фолбэк.", exc)
-                await uow.commit()
-                return DialogResult(
-                    reply=AI_UNAVAILABLE_REPLY,
-                    critical_event=critical_event,
-                    health_poll_pending=health_poll_pending,
-                )
-            logger.info("ИИ ответил: %.100s", ai_response.reply)
+        logger.info("ИИ ответил: %.100s", ai_response.reply)
 
-            # 5. Save bot's reply
+        memory_updates = []
+        try:
+            memory_updates = await self.memory_service.extractor.extract(context)
+        except Exception:  # noqa: BLE001
+            logger.exception("Извлечение памяти не удалось")
+
+        async with uow:
             await uow.messages.create(
                 user_id=user.id,
                 role=MessageRole.ASSISTANT,
                 text=ai_response.reply,
             )
 
-            # 5.1 Best-effort memory extraction (must not break the reply)
-            try:
-                await self.memory_service.update(uow, context)
-            except Exception:  # noqa: BLE001
-                logger.exception("Извлечение памяти не удалось")
+            fresh_user = await uow.users.get(user.id)
+            if fresh_user is not None:
+                for memory in memory_updates:
+                    await uow.memories.set_memory(
+                        user=fresh_user,
+                        key=memory.key,
+                        value=memory.value,
+                        category=memory.category,
+                    )
+                if memory_updates:
+                    logger.info(
+                        "Сохранено %d фактов о пользователе",
+                        len(memory_updates),
+                    )
 
             await uow.commit()
 
-            # 6. Return reply text
-            return DialogResult(
-                reply=ai_response.reply,
-                critical_event=critical_event,
-                health_poll_pending=health_poll_pending,
-            )
+        return DialogResult(
+            reply=ai_response.reply,
+            critical_event=critical_event,
+            health_poll_pending=health_poll_pending,
+        )

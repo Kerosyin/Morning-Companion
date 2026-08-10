@@ -9,6 +9,8 @@ from app.ai.openrouter import OpenRouterProvider
 
 logger = logging.getLogger(__name__)
 
+MAX_FIELD_LENGTH = 200
+
 
 @dataclass(slots=True)
 class MemoryUpdate:
@@ -96,19 +98,30 @@ Rules:
         memories: list[MemoryUpdate] = []
 
         for item in raw:
-
-            try:
-
-                memories.append(
-                    MemoryUpdate(
-                        category=item["category"],
-                        key=item["key"],
-                        value=item["value"],
-                    )
-                )
-
-            except Exception:
-
+            if not isinstance(item, dict):
                 continue
 
+            category = _clean_field(item.get("category"), default="general")
+            key = _clean_field(item.get("key"))
+            value = _clean_field(item.get("value"))
+            if not key or not value:
+                continue
+
+            memories.append(
+                MemoryUpdate(
+                    category=category,
+                    key=key,
+                    value=value,
+                )
+            )
+
         return memories
+
+
+def _clean_field(value, default: str = "") -> str:
+    if value is None:
+        return default
+    cleaned = str(value).strip()
+    if not cleaned:
+        return default
+    return cleaned[:MAX_FIELD_LENGTH]

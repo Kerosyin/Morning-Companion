@@ -54,7 +54,14 @@ class CriticalEventService:
         Detects and persists a critical event. Returns the event when the admin
         should be notified now (subject to cooldown and escalation), else None.
         """
-        enabled, min_severity, cooldown_minutes = self._config()
+        detection = await self.detect(context)
+        if detection is None:
+            return None
+        return await self.persist(uow, context.user.id, context.message, detection)
+
+    async def detect(self, context) -> CriticalEvent | None:
+        """Detect a critical event without touching the database."""
+        enabled, min_severity, _ = self._config()
         if not enabled:
             return None
 
@@ -66,23 +73,36 @@ class CriticalEventService:
         if SEVERITY_RANK[detection.severity] < min_rank:
             return None
 
+        return detection
+
+    async def persist(
+        self,
+        uow: IUnitOfWork,
+        user_id: int,
+        message_text: str,
+        detection: CriticalEvent,
+    ) -> CriticalEvent | None:
+        """
+        Persist a detected critical event and return it when notification is due.
+        """
+        _, _, cooldown_minutes = self._config()
         now = datetime.now(timezone.utc)
-        last = await uow.critical_events.get_last_for_user(context.user.id)
+        last = await uow.critical_events.get_last_for_user(user_id)
         should_notify = self._should_notify(last, detection, now, cooldown_minutes)
 
         event = await uow.critical_events.create_event(
-            user_id=context.user.id,
+            user_id=user_id,
             severity=detection.severity.value,
             event_type=detection.event_type,
             description=detection.description,
-            message_text=context.message,
+            message_text=message_text,
             created_at=now.replace(tzinfo=None),
             notified_at=now.replace(tzinfo=None) if should_notify else None,
         )
 
         logger.info(
             "Критичное событие: user=%s severity=%s notify=%s",
-            context.user.id,
+            user_id,
             detection.severity.value,
             should_notify,
         )

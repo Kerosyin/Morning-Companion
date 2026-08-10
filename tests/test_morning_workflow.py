@@ -3,7 +3,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from aiogram.exceptions import TelegramAPIError
+from sqlalchemy import select
 
+from app.db.models import NotificationOutbox, NotificationStatus
 from app.workflows.morning_workflow import MorningWorkflow
 
 pytestmark = pytest.mark.asyncio
@@ -59,3 +61,36 @@ async def test_failed_send_for_one_user_does_not_rollback_others(uow, monkeypatc
     assert a1.reminders_sent == 0
     assert a2.reminders_sent == 1
     assert a2.health_check_sent is False
+
+
+async def test_failed_morning_outbox_is_retried_without_duplicate(
+    uow,
+    monkeypatch,
+):
+    import app.workflows.morning_workflow as mw
+
+    monkeypatch.setattr(
+        mw,
+        "now_in_timezone",
+        lambda: datetime(2026, 1, 1, 9, 30, tzinfo=ZoneInfo("Europe/Moscow")),
+    )
+
+    user_id = await _make_user(uow, 100)
+
+    failed_bot = MockBot(fail_chat_ids={100})
+    await MorningWorkflow(bot=failed_bot, uow_factory=lambda: uow).execute()
+
+    retry_bot = MockBot()
+    await MorningWorkflow(bot=retry_bot, uow_factory=lambda: uow).execute()
+
+    async with uow:
+        notifications = (
+            await uow.session.execute(select(NotificationOutbox))
+        ).scalars().all()
+        activity = await uow.daily_activity.get_or_create_today(user_id)
+
+    assert retry_bot.sent == [100]
+    assert len(notifications) == 1
+    assert notifications[0].status == NotificationStatus.SENT
+    assert notifications[0].attempts == 2
+    assert activity.reminders_sent == 1

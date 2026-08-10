@@ -1,7 +1,10 @@
+import logging
 from typing import Any, Awaitable, Callable, Dict
 
 from aiogram import BaseMiddleware
 from aiogram.types import TelegramObject
+
+logger = logging.getLogger("morning_companion")
 
 
 class AccessMiddleware(BaseMiddleware):
@@ -26,7 +29,12 @@ class AccessMiddleware(BaseMiddleware):
         if answer is not None:
             try:
                 await answer("⛔ Извините, этот бот является приватным.")
-            except Exception:  # noqa: BLE001
-                pass
+            except Exception as exc:  # noqa: BLE001
+                user_id = getattr(user, "id", None)
+                logger.debug(
+                    "Не удалось ответить заблокированному user=%s: %s",
+                    user_id,
+                    exc,
+                )
 
         return None

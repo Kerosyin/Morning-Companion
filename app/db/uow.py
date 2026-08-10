@@ -11,6 +11,7 @@ from app.repositories import (
     HealthCheckinRepository,
     MemoryRepository,
     MessageRepository,
+    NotificationOutboxRepository,
     UserRepository,
 )
 
@@ -22,6 +23,7 @@ class IUnitOfWork(ABC):
     daily_activity: DailyActivityRepository
     critical_events: CriticalEventRepository
     health_checkins: HealthCheckinRepository
+    notifications: NotificationOutboxRepository
 
     @abstractmethod
     async def __aenter__(self):
@@ -53,6 +55,7 @@ class UnitOfWork(IUnitOfWork):
         self.daily_activity = DailyActivityRepository(self.session)
         self.critical_events = CriticalEventRepository(self.session)
         self.health_checkins = HealthCheckinRepository(self.session)
+        self.notifications = NotificationOutboxRepository(self.session)
 
         return self
 

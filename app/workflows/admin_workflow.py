@@ -6,6 +6,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
 from app.core.clock import now_in_timezone
+from app.db.models import NotificationStatus
 
 logger = logging.getLogger("morning_companion")
 
@@ -45,6 +46,7 @@ class AdminWorkflow:
             user_ids = [u.id for u in users]
 
             for user_id in user_ids:
+                notification = None
 
                 try:
                     user = await uow.users.get(user_id)
@@ -61,11 +63,26 @@ class AdminWorkflow:
                         not activity.first_message_at
                         and not activity.admin_notified
                     ):
+                        text = self._build_message(user)
+                        notification = await uow.notifications.get_or_create(
+                            kind="admin_inactive_user",
+                            dedupe_key=f"{now.date()}:{user.id}",
+                            chat_id=self.admin_id,
+                            text=text,
+                        )
+                        await uow.commit()
+
+                        if notification.status == NotificationStatus.SENT:
+                            activity.admin_notified = True
+                            await uow.commit()
+                            continue
+
                         await self.bot.send_message(
                             chat_id=self.admin_id,
-                            text=self._build_message(user),
+                            text=text,
                         )
 
+                        await uow.notifications.mark_sent(notification)
                         activity.admin_notified = True
 
                     # Commit per user so a send failure does not roll back the
@@ -78,6 +95,13 @@ class AdminWorkflow:
                         user_id,
                         exc,
                     )
+                    if notification is not None:
+                        await uow.notifications.mark_failed(
+                            notification,
+                            str(exc),
+                        )
+                        await uow.commit()
+                        continue
                     await uow.rollback()
                 except Exception:  # noqa: BLE001
                     logger.exception(

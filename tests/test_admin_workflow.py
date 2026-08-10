@@ -3,7 +3,9 @@ from zoneinfo import ZoneInfo
 
 import pytest
 from aiogram.exceptions import TelegramAPIError
+from sqlalchemy import select
 
+from app.db.models import NotificationOutbox, NotificationStatus
 from app.workflows.admin_workflow import AdminWorkflow
 
 pytestmark = pytest.mark.asyncio
@@ -61,3 +63,38 @@ async def test_failed_notify_for_one_user_does_not_rollback_others(uow, monkeypa
 
     assert a1.admin_notified is False
     assert a2.admin_notified is True
+
+
+async def test_failed_admin_outbox_is_retried_without_duplicate(
+    uow,
+    monkeypatch,
+):
+    import app.workflows.admin_workflow as aw
+
+    monkeypatch.setattr(
+        aw,
+        "now_in_timezone",
+        lambda: datetime(2026, 1, 1, 13, 0, tzinfo=ZoneInfo("Europe/Moscow")),
+    )
+
+    user_id = await _make_user(uow, 100)
+
+    failed_bot = MockBot(fail_on_call=1)
+    workflow = AdminWorkflow(bot=failed_bot, admin_id=999, uow_factory=lambda: uow)
+    await workflow.execute()
+
+    retry_bot = MockBot()
+    workflow = AdminWorkflow(bot=retry_bot, admin_id=999, uow_factory=lambda: uow)
+    await workflow.execute()
+
+    async with uow:
+        notifications = (
+            await uow.session.execute(select(NotificationOutbox))
+        ).scalars().all()
+        activity = await uow.daily_activity.get_or_create_today(user_id)
+
+    assert retry_bot.sent == [999]
+    assert len(notifications) == 1
+    assert notifications[0].status == NotificationStatus.SENT
+    assert notifications[0].attempts == 2
+    assert activity.admin_notified is True

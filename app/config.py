@@ -58,6 +58,18 @@ class Settings(BaseSettings):
             return [int(item.strip()) for item in value.split(",") if item.strip()]
         return value
 
+    @field_validator("critical_alert_min_severity")
+    @classmethod
+    def validate_critical_alert_min_severity(cls, value: str) -> str:
+        allowed = {"low", "high", "critical"}
+        normalized = value.strip().lower()
+        if normalized not in allowed:
+            raise ValueError(
+                "CRITICAL_ALERT_MIN_SEVERITY must be one of: "
+                "low, high, critical"
+            )
+        return normalized
+
 
 @lru_cache
 def get_settings() -> Settings:

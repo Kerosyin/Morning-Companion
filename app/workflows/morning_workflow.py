@@ -6,6 +6,7 @@ from aiogram import Bot
 from aiogram.exceptions import TelegramAPIError
 
 from app.core.clock import now_in_timezone
+from app.db.models import NotificationStatus
 from app.reminders.provider import ReminderProvider
 from app.services.morning_service import MorningService
 
@@ -42,6 +43,7 @@ class MorningWorkflow:
             user_ids = [u.id for u in users]
 
             for user_id in user_ids:
+                notification = None
 
                 try:
                     user = await uow.users.get(user_id)
@@ -55,11 +57,34 @@ class MorningWorkflow:
                     )
 
                     if decision.should_send:
+                        text = self.provider.get(decision.reminder_number)
+                        dedupe_key = (
+                            f"{now.date()}:{user.id}:{decision.reminder_number}"
+                        )
+                        notification = await uow.notifications.get_or_create(
+                            kind="morning_reminder",
+                            dedupe_key=dedupe_key,
+                            chat_id=user.telegram_id,
+                            text=text,
+                        )
+                        await uow.commit()
+
+                        if notification.status == NotificationStatus.SENT:
+                            activity = (
+                                await uow.daily_activity.get_or_create_today(
+                                    user.id,
+                                )
+                            )
+                            await uow.daily_activity.mark_reminder_sent(
+                                activity,
+                                decision.reminder_number,
+                            )
+                            await uow.commit()
+                            continue
+
                         await self.bot.send_message(
                             chat_id=user.telegram_id,
-                            text=self.provider.get(
-                                decision.reminder_number,
-                            ),
+                            text=text,
                         )
 
                         activity = (
@@ -68,8 +93,10 @@ class MorningWorkflow:
                             )
                         )
 
-                        await uow.daily_activity.increment_reminders_sent(
+                        await uow.notifications.mark_sent(notification)
+                        await uow.daily_activity.mark_reminder_sent(
                             activity,
+                            decision.reminder_number,
                         )
 
                     # Commit per user so a failure on one user does not roll
@@ -81,6 +108,13 @@ class MorningWorkflow:
                         user_id,
                         exc,
                     )
+                    if notification is not None:
+                        await uow.notifications.mark_failed(
+                            notification,
+                            str(exc),
+                        )
+                        await uow.commit()
+                        continue
                     await uow.rollback()
                 except Exception:  # noqa: BLE001
                     logger.exception(

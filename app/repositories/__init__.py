@@ -4,6 +4,7 @@ from .daily_activity_repository import DailyActivityRepository
 from .health_checkin_repository import HealthCheckinRepository
 from .memory_repository import MemoryRepository
 from .message_repository import MessageRepository
+from .notification_outbox_repository import NotificationOutboxRepository
 from .user_repository import UserRepository
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "DailyActivityRepository",
     "CriticalEventRepository",
     "HealthCheckinRepository",
+    "NotificationOutboxRepository",
 ]
