@@ -1,6 +1,11 @@
 from datetime import date, timedelta
 
-from app.services.health_chart import render_health_chart
+from app.services.health_chart import (
+    _period_bounds,
+    _series_with_gaps,
+    _tick_dates,
+    render_health_chart,
+)
 from app.services.health_check_service import HealthCheckService
 from app.telegram.stats_keyboard import (
     build_period_keyboard,
@@ -46,6 +51,44 @@ def test_render_chart_single_point():
     checkins = [_FakeCheckin(date.today(), 4)]
     png = render_health_chart(checkins, days=1)
     assert png is not None
+
+
+def test_chart_period_bounds_use_selected_days():
+    end = date(2026, 8, 10)
+    start, period_end = _period_bounds(
+        [end - timedelta(days=1)],
+        days=14,
+        end_date=end,
+    )
+    assert start == date(2026, 7, 28)
+    assert period_end == end
+
+
+def test_chart_ticks_are_unique_for_long_period():
+    start = date(2026, 7, 12)
+    end = date(2026, 8, 10)
+    ticks = _tick_dates(start, end, days=30)
+    labels = [f"{tick:%d.%m}" for tick in ticks]
+    assert len(labels) == len(set(labels))
+    assert ticks[0] == start
+    assert ticks[-1] == end
+
+
+def test_chart_series_breaks_line_on_missing_days():
+    start = date(2026, 8, 1)
+    end = date(2026, 8, 3)
+    dates, ratings = _series_with_gaps(
+        [
+            _FakeCheckin(date(2026, 8, 1), 4),
+            _FakeCheckin(date(2026, 8, 3), 5),
+        ],
+        start,
+        end,
+    )
+    assert dates == [date(2026, 8, 1), date(2026, 8, 2), date(2026, 8, 3)]
+    assert ratings[0] == 4
+    assert ratings[1] != ratings[1]
+    assert ratings[2] == 5
 
 
 # ── HealthCheckService.chart ────────────────────────────────────

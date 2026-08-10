@@ -52,6 +52,8 @@ async def test_trend_builds_report(uow):
         report = await service.trend(uow, user_id)
 
     assert "среднее 4.0/5" in report
+    assert "за последние 7 дн." in report
+    assert "записей 3" in report
     assert "3" in report
     assert "5" in report
 

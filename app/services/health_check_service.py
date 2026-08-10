@@ -40,7 +40,12 @@ class HealthCheckService:
             return "📊 Пока нет данных о самочувствии за последние дни."
 
         average = sum(c.rating for c in checkins) / len(checkins)
-        lines = [f"📊 Самочувствие за {len(checkins)} дн. (среднее {average:.1f}/5)"]
+        lines = [
+            (
+                f"📊 Самочувствие за последние {self.days} дн. "
+                f"(записей {len(checkins)}, среднее {average:.1f}/5)"
+            )
+        ]
         for checkin in checkins:
             filled = _RATING_FILLED.get(checkin.rating, "█")
             bar = f"{filled}{_EMPTY * (5 - len(filled))}"
@@ -54,4 +59,8 @@ class HealthCheckService:
     async def chart(self, uow: IUnitOfWork, user_id: int) -> bytes | None:
         """Render a well-being trend chart as PNG bytes (None if no data)."""
         checkins = await uow.health_checkins.get_recent(user_id, self.days)
-        return render_health_chart(checkins, self.days)
+        return render_health_chart(
+            checkins,
+            self.days,
+            end_date=today_in_timezone(),
+        )
