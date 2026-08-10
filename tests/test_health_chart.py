@@ -74,6 +74,17 @@ def test_chart_ticks_are_unique_for_long_period():
     assert ticks[-1] == end
 
 
+def test_chart_ticks_sparse_for_three_month_period():
+    start = date(2026, 5, 12)
+    end = date(2026, 8, 10)
+    ticks = _tick_dates(start, end, days=90)
+    labels = [f"{tick:%d.%m}" for tick in ticks]
+    assert len(labels) == len(set(labels))
+    assert ticks[0] == start
+    assert ticks[-1] == end
+    assert len(ticks) <= 20
+
+
 def test_chart_series_breaks_line_on_missing_days():
     start = date(2026, 8, 1)
     end = date(2026, 8, 3)

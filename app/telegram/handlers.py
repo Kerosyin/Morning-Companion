@@ -3,7 +3,12 @@ from pathlib import Path
 
 from aiogram import Bot, Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import BufferedInputFile, Message, User
+from aiogram.types import (
+    BufferedInputFile,
+    InlineKeyboardMarkup,
+    Message,
+    User,
+)
 
 from app.ai.critical_event_detector import CriticalEvent
 from app.config import get_settings
@@ -13,7 +18,10 @@ from app.db.uow import IUnitOfWork
 from app.services.dialog_service import DialogService
 from app.services.health_check_service import HealthCheckService
 from app.telegram.health_poll import POLL_TEXT, build_rating_keyboard
-from app.telegram.stats_keyboard import build_user_list_keyboard
+from app.telegram.stats_keyboard import (
+    build_period_keyboard,
+    build_user_list_keyboard,
+)
 
 logger = logging.getLogger("morning_companion")
 
@@ -38,6 +46,29 @@ async def start(message: Message):
         "Добро пожаловать в Morning Companion ☀️\n\n"
         "Я готов записывать наши с вами диалоги."
     )
+
+
+@router.message(Command("users"))
+async def users_list(message: Message, uow: IUnitOfWork):
+    """
+    Admin-only: lists all registered users with their names and telegram ids.
+    """
+    if message.from_user.id != get_settings().admin_id:
+        await message.answer("Эта команда доступна только администратору.")
+        return
+
+    async with uow:
+        users = await uow.users.get_all()
+        if not users:
+            await message.answer("Пользователей пока нет.")
+            return
+        lines = ["👥 Пользователи:"]
+        for user in users:
+            name = user.first_name or (f"@{user.username}" if user.username else "—")
+            lines.append(f"• {name} — {user.telegram_id}")
+        text = "\n".join(lines)
+
+    await message.answer(text)
 
 
 @router.message(Command("stats"))
@@ -75,8 +106,9 @@ async def stats(message: Message, uow: IUnitOfWork):
         service = HealthCheckService(days=days)
         text = await service.trend(uow, user.id)
         chart_png = await service.chart(uow, user.id)
+        kb = build_period_keyboard(user.telegram_id, days)
 
-    await _send_stats(message, chart_png, text)
+    await _send_stats(message, chart_png, text, kb)
 
 
 def _parse_days_arg(text: str, default: int) -> int:
@@ -86,14 +118,20 @@ def _parse_days_arg(text: str, default: int) -> int:
     return default
 
 
-async def _send_stats(message: Message, png: bytes | None, text: str) -> None:
+async def _send_stats(
+    message: Message,
+    png: bytes | None,
+    text: str,
+    kb: InlineKeyboardMarkup | None = None,
+) -> None:
     if png is not None:
         await message.answer_photo(
             BufferedInputFile(png, filename="stats.png"),
             caption=text,
+            reply_markup=kb,
         )
     else:
-        await message.answer(text)
+        await message.answer(text, reply_markup=kb)
 
 
 @router.message()

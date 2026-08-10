@@ -122,7 +122,7 @@ def _period_bounds(
 
 
 def _tick_dates(start: date, end: date, days: int) -> list[date]:
-    interval = 1 if days <= 14 else 3
+    interval = 1 if days <= 14 else 3 if days <= 60 else 7
     ticks = []
     current = start
     while current <= end:

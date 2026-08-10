@@ -6,7 +6,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 STATS_USER_PREFIX = "stats:u"
 STATS_PERIOD_PREFIX = "stats:p"
 
-_PERIODS = [7, 14, 30]
+_PERIODS = [7, 14, 30, 90]
 _DEFAULT_DAYS = 7
 _MAX_DAYS = 365
 

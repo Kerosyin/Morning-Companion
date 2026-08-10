@@ -65,9 +65,12 @@ async def stats_callback(callback: CallbackQuery, uow: IUnitOfWork):
 
     kind, telegram_id, days = parsed
 
-    if callback.from_user.id != get_settings().admin_id:
-        await callback.answer("Недостаточно прав", show_alert=True)
-        return
+    is_admin = callback.from_user.id == get_settings().admin_id
+    if not is_admin:
+        # Regular users may switch the period only for their own chart.
+        if kind != "period" or callback.from_user.id != telegram_id:
+            await callback.answer("Недостаточно прав", show_alert=True)
+            return
 
     async with uow:
         user = await uow.users.get_by_telegram_id(telegram_id)
