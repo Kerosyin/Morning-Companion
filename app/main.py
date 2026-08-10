@@ -1,6 +1,8 @@
 import argparse
 import asyncio
 
+from aiogram.types import BotCommand, BotCommandScopeChat, BotCommandScopeDefault
+
 from app.config import get_settings
 from app.core.application import Application
 from app.db.init_db import init_db
@@ -13,6 +15,19 @@ from app.telegram.dispatcher import create_dispatcher
 
 def uow_factory():
     return UnitOfWork(SessionLocal)
+
+
+async def _setup_commands(bot, admin_id: int) -> None:
+    """Register bot commands in Telegram's '/' menu."""
+    common = [BotCommand(command="start", description="Запустить бота")]
+    admin_cmds = [
+        BotCommand(command="start", description="Запустить бота"),
+        BotCommand(command="stats", description="📊 График самочувствия"),
+    ]
+    await bot.set_my_commands(common, scope=BotCommandScopeDefault())
+    await bot.set_my_commands(
+        admin_cmds, scope=BotCommandScopeChat(chat_id=admin_id)
+    )
 
 
 async def main():
@@ -52,6 +67,7 @@ async def main():
         settings.model,
         settings.ai_provider,
     )
+    await _setup_commands(bot, settings.admin_id)
     await app.start()
 
 

@@ -4,6 +4,7 @@ import logging
 
 from app.core.clock import today_in_timezone
 from app.db.uow import IUnitOfWork
+from app.services.health_chart import render_health_chart
 
 logger = logging.getLogger("morning_companion")
 
@@ -49,3 +50,8 @@ class HealthCheckService:
             )
 
         return "\n".join(lines)
+
+    async def chart(self, uow: IUnitOfWork, user_id: int) -> bytes | None:
+        """Render a well-being trend chart as PNG bytes (None if no data)."""
+        checkins = await uow.health_checkins.get_recent(user_id, self.days)
+        return render_health_chart(checkins, self.days)

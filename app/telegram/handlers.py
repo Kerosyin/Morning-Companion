@@ -3,7 +3,7 @@ from pathlib import Path
 
 from aiogram import Bot, Router
 from aiogram.filters import Command, CommandStart
-from aiogram.types import Message, User
+from aiogram.types import BufferedInputFile, Message, User
 
 from app.ai.critical_event_detector import CriticalEvent
 from app.config import get_settings
@@ -13,6 +13,7 @@ from app.db.uow import IUnitOfWork
 from app.services.dialog_service import DialogService
 from app.services.health_check_service import HealthCheckService
 from app.telegram.health_poll import POLL_TEXT, build_rating_keyboard
+from app.telegram.stats_keyboard import build_user_list_keyboard
 
 logger = logging.getLogger("morning_companion")
 
@@ -42,30 +43,57 @@ async def start(message: Message):
 @router.message(Command("stats"))
 async def stats(message: Message, uow: IUnitOfWork):
     """
-    Shows well-being statistics. The admin can view any user's stats by
-    passing a telegram_id (e.g. /stats 123456), everyone else sees their own.
+    Shows well-being statistics as a chart.
+
+    **Admin** receives a button-list of all users; tapping one opens that
+    user's chart with period switchers.
+
+    **Regular user** receives their own chart directly. An optional numeric
+    argument overrides the period (e.g. ``/stats 14``).
     """
-    async with uow:
-        target = message.from_user.id
-        if message.from_user.id == get_settings().admin_id:
-            command_parts = message.text.split()
-            if len(command_parts) > 1 and command_parts[1].isdigit():
-                target = int(command_parts[1])
-                if target != message.from_user.id:
-                    logger.info(
-                        "Админ %s запрашивает /stats пользователя %s",
-                        message.from_user.id,
-                        target,
-                    )
+    settings = get_settings()
+    is_admin = message.from_user.id == settings.admin_id
 
-        user = await uow.users.get_by_telegram_id(target)
-        if user is None:
-            await message.answer("Пользователь с таким ID не найден.")
+    if is_admin:
+        async with uow:
+            users = await uow.users.get_all()
+        if not users:
+            await message.answer("Нет зарегистрированных пользователей.")
             return
+        await message.answer(
+            "📊 Выберите пользователя:",
+            reply_markup=build_user_list_keyboard(users),
+        )
+        return
 
-        text = await HealthCheckService().trend(uow, user.id)
+    days = _parse_days_arg(message.text, default=7)
+    async with uow:
+        user = await uow.users.get_by_telegram_id(message.from_user.id)
+        if user is None:
+            await message.answer("Сначала отправьте сообщение боту.")
+            return
+        service = HealthCheckService(days=days)
+        text = await service.trend(uow, user.id)
+        chart_png = await service.chart(uow, user.id)
 
-    await message.answer(text)
+    await _send_stats(message, chart_png, text)
+
+
+def _parse_days_arg(text: str, default: int) -> int:
+    for part in text.split()[1:]:
+        if part.isdigit() and 1 <= int(part) <= 90:
+            return int(part)
+    return default
+
+
+async def _send_stats(message: Message, png: bytes | None, text: str) -> None:
+    if png is not None:
+        await message.answer_photo(
+            BufferedInputFile(png, filename="stats.png"),
+            caption=text,
+        )
+    else:
+        await message.answer(text)
 
 
 @router.message()
