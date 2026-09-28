@@ -98,3 +98,23 @@ async def test_health_poll_suppressed_on_critical_event(uow, monkeypatch):
     # Only the admin notification is sent, and without a rating keyboard.
     assert len(message.bot.sent) == 1
     assert message.bot.sent[0]["reply_markup"] is None
+
+
+async def test_allow_grants_id_for_admin(uow, monkeypatch):
+    settings = type("S", (), {"admin_id": 42})()
+    monkeypatch.setattr(handlers, "get_settings", lambda: settings)
+    message = _FakeMessage("/allow 123")
+
+    await handlers.allow_access(message, uow)
+
+    assert "123" in message.answers[0]
+
+
+async def test_allow_rejects_non_admin(uow, monkeypatch):
+    settings = type("S", (), {"admin_id": 1})()
+    monkeypatch.setattr(handlers, "get_settings", lambda: settings)
+    message = _FakeMessage("/allow 123")
+
+    await handlers.allow_access(message, uow)
+
+    assert "только администратору" in message.answers[0]

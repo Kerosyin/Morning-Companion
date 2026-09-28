@@ -6,6 +6,7 @@ from typing import Type
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.repositories import (
+    AccessGrantRepository,
     CriticalEventRepository,
     DailyActivityRepository,
     HealthCheckinRepository,
@@ -17,6 +18,7 @@ from app.repositories import (
 
 
 class IUnitOfWork(ABC):
+    access_grants: AccessGrantRepository
     users: UserRepository
     messages: MessageRepository
     memories: MemoryRepository
@@ -49,6 +51,7 @@ class UnitOfWork(IUnitOfWork):
     async def __aenter__(self):
         self.session = self._session_factory()
 
+        self.access_grants = AccessGrantRepository(self.session)
         self.users = UserRepository(self.session)
         self.messages = MessageRepository(self.session)
         self.memories = MemoryRepository(self.session)

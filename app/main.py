@@ -23,6 +23,9 @@ async def _setup_commands(bot, admin_id: int) -> None:
     admin_cmds = [
         BotCommand(command="start", description="Запустить бота"),
         BotCommand(command="stats", description="📊 График самочувствия"),
+        BotCommand(command="allow", description="Разрешить ID"),
+        BotCommand(command="deny", description="Закрыть доступ ID"),
+        BotCommand(command="allowed", description="Список разрешённых ID"),
     ]
     await bot.set_my_commands(common, scope=BotCommandScopeDefault())
     await bot.set_my_commands(
@@ -54,7 +57,7 @@ async def main():
 
     settings = get_settings()
     bot = create_bot(settings)
-    dispatcher = create_dispatcher(settings.allowed_users)
+    dispatcher = create_dispatcher()
     app = Application(
         bot=bot,
         dispatcher=dispatcher,

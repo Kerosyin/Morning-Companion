@@ -8,7 +8,7 @@ from app.telegram.middleware.rate_limit import RateLimitMiddleware
 from app.telegram.middleware.uow import UoWMiddleware
 
 
-def create_dispatcher(allowed_users: list[int]) -> Dispatcher:
+def create_dispatcher() -> Dispatcher:
     dp = Dispatcher()
     settings = get_settings()
 
@@ -17,7 +17,7 @@ def create_dispatcher(allowed_users: list[int]) -> Dispatcher:
     # spammers) -> handler. So a flooding whitelisted user is stopped before
     # any DB/LLM work happens inside the handler.
     dp.message.middleware(UoWMiddleware())
-    dp.message.middleware(AccessMiddleware(allowed_users))
+    dp.message.middleware(AccessMiddleware(settings.admin_id))
     dp.message.middleware(
         RateLimitMiddleware(
             max_messages=settings.rate_limit_max_messages,
@@ -25,7 +25,7 @@ def create_dispatcher(allowed_users: list[int]) -> Dispatcher:
         )
     )
     dp.callback_query.middleware(UoWMiddleware())
-    dp.callback_query.middleware(AccessMiddleware(allowed_users))
+    dp.callback_query.middleware(AccessMiddleware(settings.admin_id))
 
     dp.include_router(router)
     dp.include_router(callback_router)

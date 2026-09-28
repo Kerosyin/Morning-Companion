@@ -12,8 +12,8 @@ class AccessMiddleware(BaseMiddleware):
     Blocks updates from users who are not in the allowed (whitelist) set.
     """
 
-    def __init__(self, allowed_users: list[int]):
-        self.allowed_users: set[int] = set(allowed_users)
+    def __init__(self, admin_id: int):
+        self.admin_id = admin_id
 
     async def __call__(
         self,
@@ -22,8 +22,15 @@ class AccessMiddleware(BaseMiddleware):
         data: Dict[str, Any],
     ) -> Any:
         user = data.get("event_from_user")
-        if user is not None and user.id in self.allowed_users:
-            return await handler(event, data)
+        if user is not None:
+            if user.id == self.admin_id:
+                return await handler(event, data)
+
+            uow = data.get("uow")
+            if uow is not None:
+                async with uow:
+                    if await uow.access_grants.is_granted(user.id):
+                        return await handler(event, data)
 
         answer = getattr(event, "answer", None)
         if answer is not None:

@@ -1,3 +1,4 @@
+from .access_grant_repository import AccessGrantRepository
 from .base_repository import BaseRepository
 from .critical_event_repository import CriticalEventRepository
 from .daily_activity_repository import DailyActivityRepository
@@ -9,6 +10,7 @@ from .user_repository import UserRepository
 
 __all__ = [
     "BaseRepository",
+    "AccessGrantRepository",
     "UserRepository",
     "MessageRepository",
     "MemoryRepository",

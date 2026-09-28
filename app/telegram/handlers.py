@@ -71,6 +71,72 @@ async def users_list(message: Message, uow: IUnitOfWork):
     await message.answer(text)
 
 
+def _admin_id(message: Message) -> int | None:
+    if message.from_user.id == get_settings().admin_id:
+        return message.from_user.id
+    return None
+
+
+def _command_telegram_id(text: str) -> int | None:
+    parts = text.split()
+    if len(parts) != 2 or not parts[1].isdigit():
+        return None
+    telegram_id = int(parts[1])
+    return telegram_id if telegram_id > 0 else None
+
+
+@router.message(Command("allow"))
+async def allow_access(message: Message, uow: IUnitOfWork):
+    admin_id = _admin_id(message)
+    if admin_id is None:
+        await message.answer("Эта команда доступна только администратору.")
+        return
+    telegram_id = _command_telegram_id(message.text)
+    if telegram_id is None:
+        await message.answer("Использование: /allow <telegram_id>")
+        return
+    async with uow:
+        added = await uow.access_grants.grant(telegram_id, granted_by=admin_id)
+        await uow.commit()
+    text = "Добавлен доступ для" if added else "Доступ уже есть у"
+    await message.answer(f"{text} {telegram_id}.")
+
+
+@router.message(Command("deny"))
+async def deny_access(message: Message, uow: IUnitOfWork):
+    admin_id = _admin_id(message)
+    if admin_id is None:
+        await message.answer("Эта команда доступна только администратору.")
+        return
+    telegram_id = _command_telegram_id(message.text)
+    if telegram_id is None:
+        await message.answer("Использование: /deny <telegram_id>")
+        return
+    if telegram_id == admin_id:
+        await message.answer("Нельзя отозвать доступ у администратора.")
+        return
+    async with uow:
+        removed = await uow.access_grants.revoke(telegram_id)
+        await uow.commit()
+    text = "Доступ отозван у" if removed else "Пользователя нет в списке:"
+    await message.answer(f"{text} {telegram_id}.")
+
+
+@router.message(Command("allowed"))
+async def allowed_access(message: Message, uow: IUnitOfWork):
+    if _admin_id(message) is None:
+        await message.answer("Эта команда доступна только администратору.")
+        return
+    async with uow:
+        grants = await uow.access_grants.list_all()
+    if not grants:
+        await message.answer("Список доступа пуст.")
+        return
+    await message.answer("Разрешённые ID:\n" + "\n".join(
+        str(grant.telegram_id) for grant in grants
+    ))
+
+
 @router.message(Command("stats"))
 async def stats(message: Message, uow: IUnitOfWork):
     """
