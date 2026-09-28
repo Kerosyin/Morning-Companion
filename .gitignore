@@ -17,3 +17,7 @@ data/logs/
 .pytest_cache/
 
 .coverage
+
+# Local recovery archives. These may contain runtime secrets and user data.
+secret/
+.worktrees/
