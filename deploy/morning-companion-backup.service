@@ -1,0 +1,10 @@
+[Unit]
+Description=Morning Companion backup
+
+[Service]
+Type=oneshot
+User=bigbrick
+Group=bigbrick
+WorkingDirectory=/home/bigbrick/Morning-Companion
+Environment=BACKUP_DIR=/home/bigbrick/backups/morning-companion
+ExecStart=/home/bigbrick/Morning-Companion/scripts/bot-backup.sh
