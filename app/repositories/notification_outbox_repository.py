@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+from sqlalchemy import delete
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -17,6 +18,11 @@ class NotificationOutboxRepository(BaseRepository[NotificationOutbox]):
         dedupe_key: str,
     ) -> NotificationOutbox | None:
         return await self.get_by(kind=kind, dedupe_key=dedupe_key)
+
+    async def delete_by_chat_id(self, chat_id: int) -> None:
+        await self.session.execute(
+            delete(NotificationOutbox).where(NotificationOutbox.chat_id == chat_id)
+        )
 
     async def get_or_create(
         self,

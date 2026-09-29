@@ -26,6 +26,8 @@ async def _setup_commands(bot, admin_id: int) -> None:
         BotCommand(command="allow", description="Разрешить ID"),
         BotCommand(command="deny", description="Закрыть доступ ID"),
         BotCommand(command="allowed", description="Список разрешённых ID"),
+        BotCommand(command="delete_user", description="Удалить пользователя"),
+        BotCommand(command="confirm_delete", description="Подтвердить удаление"),
     ]
     await bot.set_my_commands(common, scope=BotCommandScopeDefault())
     await bot.set_my_commands(

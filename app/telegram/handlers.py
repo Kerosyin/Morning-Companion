@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from aiogram import Bot, Router
@@ -26,6 +27,7 @@ from app.telegram.stats_keyboard import (
 logger = logging.getLogger("morning_companion")
 
 router = Router()
+pending_deletions: dict[int, tuple[int, datetime]] = {}
 
 CATEGORY_LABELS = {
     "health_emergency": "Здоровье (экстренно)",
@@ -135,6 +137,55 @@ async def allowed_access(message: Message, uow: IUnitOfWork):
     await message.answer("Разрешённые ID:\n" + "\n".join(
         str(grant.telegram_id) for grant in grants
     ))
+
+
+@router.message(Command("delete_user"))
+async def delete_user(message: Message, uow: IUnitOfWork):
+    admin_id = _admin_id(message)
+    if admin_id is None:
+        await message.answer("Эта команда доступна только администратору.")
+        return
+    telegram_id = _command_telegram_id(message.text)
+    if telegram_id is None:
+        await message.answer("Использование: /delete_user <telegram_id>")
+        return
+    if telegram_id == admin_id:
+        await message.answer("Нельзя удалить администратора.")
+        return
+    pending_deletions[admin_id] = (telegram_id, datetime.now(timezone.utc))
+    await message.answer(
+        f"Будут безвозвратно удалены все данные {telegram_id}. "
+        f"Подтвердите: /confirm_delete {telegram_id}"
+    )
+
+
+@router.message(Command("confirm_delete"))
+async def confirm_delete(message: Message, uow: IUnitOfWork):
+    admin_id = _admin_id(message)
+    if admin_id is None:
+        await message.answer("Эта команда доступна только администратору.")
+        return
+    telegram_id = _command_telegram_id(message.text)
+    pending = pending_deletions.pop(admin_id, None)
+    if (
+        telegram_id is None
+        or pending is None
+        or pending[0] != telegram_id
+        or datetime.now(timezone.utc) - pending[1] > timedelta(minutes=5)
+    ):
+        await message.answer("Нет действующего подтверждения удаления.")
+        return
+    async with uow:
+        await uow.access_grants.revoke(telegram_id)
+        await uow.notifications.delete_by_chat_id(telegram_id)
+        deleted = await uow.users.delete_by_telegram_id(telegram_id)
+        await uow.commit()
+    text = (
+        "Пользователь и все его данные удалены."
+        if deleted
+        else "Пользователь не найден."
+    )
+    await message.answer(text)
 
 
 @router.message(Command("stats"))
