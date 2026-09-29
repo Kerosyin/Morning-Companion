@@ -10,6 +10,7 @@ STAGING_DIR="$(mktemp -d)"
 
 cleanup() {
     rm -rf "$STAGING_DIR"
+    rm -f "$ARCHIVE.partial"
 }
 trap cleanup EXIT
 
@@ -41,6 +42,7 @@ finally:
 PY
 
 tar -C "$STAGING_DIR" -czf "$ARCHIVE.partial" project
+"$PYTHON_BIN" "$APP_DIR/scripts/verify_backup.py" "$ARCHIVE.partial"
 mv "$ARCHIVE.partial" "$ARCHIVE"
 chmod 600 "$ARCHIVE"
 

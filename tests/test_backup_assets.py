@@ -10,6 +10,7 @@ def test_backup_script_creates_a_consistent_database_snapshot_and_keeps_three_ar
     assert "source.backup(destination)" in script
     assert 'find "$BACKUP_DIR"' in script
     assert "tail -n +4" in script
+    assert 'scripts/verify_backup.py" "$ARCHIVE.partial' in script
 
 
 def test_backup_timer_runs_weekly_as_the_application_user():

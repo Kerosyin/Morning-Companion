@@ -69,6 +69,7 @@ class AdminWorkflow:
                             dedupe_key=f"{now.date()}:{user.id}",
                             chat_id=self.admin_id,
                             text=text,
+                            subject_user_id=user.id,
                         )
                         await uow.commit()
 

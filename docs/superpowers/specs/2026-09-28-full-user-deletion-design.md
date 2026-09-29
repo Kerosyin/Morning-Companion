@@ -20,9 +20,10 @@ outbox entries addressed to that Telegram ID. User-owned relations are removed
 through their existing delete-orphan cascades; outbox records are deleted by
 `chat_id`.
 
-No personal content is retained. The administrator receives a completion
-message; standard service logs may record only the Telegram ID and deletion
-time.
+No personal content is retained in the live application database. Existing
+backup archives may still contain older snapshots until rotated or explicitly
+removed. The administrator receives a completion message; standard service
+logs may record only the Telegram ID and deletion time.
 
 ## Authorization And Safety
 

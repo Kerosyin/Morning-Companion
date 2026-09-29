@@ -24,6 +24,13 @@ class NotificationOutboxRepository(BaseRepository[NotificationOutbox]):
             delete(NotificationOutbox).where(NotificationOutbox.chat_id == chat_id)
         )
 
+    async def delete_by_subject_user_id(self, user_id: int) -> None:
+        await self.session.execute(
+            delete(NotificationOutbox).where(
+                NotificationOutbox.subject_user_id == user_id
+            )
+        )
+
     async def get_or_create(
         self,
         *,
@@ -31,6 +38,7 @@ class NotificationOutboxRepository(BaseRepository[NotificationOutbox]):
         dedupe_key: str,
         chat_id: int,
         text: str,
+        subject_user_id: int | None = None,
     ) -> NotificationOutbox:
         existing = await self.get_by_key(kind, dedupe_key)
         if existing is not None:
@@ -43,6 +51,7 @@ class NotificationOutboxRepository(BaseRepository[NotificationOutbox]):
                     dedupe_key=dedupe_key,
                     chat_id=chat_id,
                     text=text,
+                    subject_user_id=subject_user_id,
                 )
                 await self.session.flush()
             return notification

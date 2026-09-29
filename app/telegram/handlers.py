@@ -176,8 +176,11 @@ async def confirm_delete(message: Message, uow: IUnitOfWork):
         await message.answer("Нет действующего подтверждения удаления.")
         return
     async with uow:
+        user = await uow.users.get_by_telegram_id(telegram_id)
         await uow.access_grants.revoke(telegram_id)
         await uow.notifications.delete_by_chat_id(telegram_id)
+        if user is not None:
+            await uow.notifications.delete_by_subject_user_id(user.id)
         deleted = await uow.users.delete_by_telegram_id(telegram_id)
         await uow.commit()
     text = (

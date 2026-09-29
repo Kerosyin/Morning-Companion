@@ -29,6 +29,7 @@ class NotificationOutbox(Base):
     kind: Mapped[str] = mapped_column(String(50), index=True)
     dedupe_key: Mapped[str] = mapped_column(String(200))
     chat_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    subject_user_id: Mapped[int | None] = mapped_column(Integer, index=True)
     text: Mapped[str] = mapped_column(Text)
     status: Mapped[NotificationStatus] = mapped_column(
         SqlEnum(
