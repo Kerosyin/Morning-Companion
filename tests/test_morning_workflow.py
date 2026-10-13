@@ -94,3 +94,25 @@ async def test_failed_morning_outbox_is_retried_without_duplicate(
     assert notifications[0].status == NotificationStatus.SENT
     assert notifications[0].attempts == 2
     assert activity.reminders_sent == 1
+
+
+async def test_admin_is_excluded_from_morning_reminders(uow, monkeypatch):
+    import app.workflows.morning_workflow as mw
+
+    monkeypatch.setattr(
+        mw,
+        "now_in_timezone",
+        lambda: datetime(2026, 1, 1, 9, 30, tzinfo=ZoneInfo("Europe/Moscow")),
+    )
+
+    await _make_user(uow, 999)
+    await _make_user(uow, 100)
+    bot = MockBot()
+
+    await MorningWorkflow(
+        bot=bot,
+        uow_factory=lambda: uow,
+        excluded_telegram_id=999,
+    ).execute()
+
+    assert bot.sent == [100]

@@ -22,10 +22,12 @@ class MorningWorkflow:
         self,
         bot: Bot,
         uow_factory,
+        excluded_telegram_id: int | None = None,
     ) -> None:
 
         self.bot = bot
         self.uow_factory = uow_factory
+        self.excluded_telegram_id = excluded_telegram_id
 
         self.morning_service = MorningService()
         self.provider = ReminderProvider()
@@ -48,6 +50,8 @@ class MorningWorkflow:
                 try:
                     user = await uow.users.get(user_id)
                     if user is None:
+                        continue
+                    if user.telegram_id == self.excluded_telegram_id:
                         continue
 
                     decision = await self.morning_service.evaluate(

@@ -99,6 +99,7 @@ async def allow_access(message: Message, uow: IUnitOfWork):
         return
     async with uow:
         added = await uow.access_grants.grant(telegram_id, granted_by=admin_id)
+        await uow.users.get_or_create(telegram_id, defaults={})
         await uow.commit()
     text = "Добавлен доступ для" if added else "Доступ уже есть у"
     await message.answer(f"{text} {telegram_id}.")

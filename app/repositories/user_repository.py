@@ -33,6 +33,13 @@ class UserRepository(BaseRepository[User]):
         )
 
         if user:
+            profile_updates = {
+                field: value
+                for field, value in defaults.items()
+                if value is not None and getattr(user, field, None) is None
+            }
+            if profile_updates:
+                await self.update(user, **profile_updates)
             return user
 
         try:

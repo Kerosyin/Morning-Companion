@@ -109,6 +109,26 @@ async def test_allow_grants_id_for_admin(uow, monkeypatch):
 
     assert "123" in message.answers[0]
 
+    async with uow:
+        user = await uow.users.get_by_telegram_id(123)
+
+    assert user is not None
+
+    async with uow:
+        user = await uow.users.get_or_create(
+            123,
+            defaults={
+                "username": "new_user",
+                "first_name": "Новый пользователь",
+                "last_name": "Тестовый",
+            },
+        )
+        await uow.commit()
+
+    assert user.username == "new_user"
+    assert user.first_name == "Новый пользователь"
+    assert user.last_name == "Тестовый"
+
 
 async def test_allow_rejects_non_admin(uow, monkeypatch):
     settings = type("S", (), {"admin_id": 1})()

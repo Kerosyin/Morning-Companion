@@ -52,6 +52,8 @@ class AdminWorkflow:
                     user = await uow.users.get(user_id)
                     if user is None:
                         continue
+                    if user.telegram_id == self.admin_id:
+                        continue
 
                     activity = await (
                         uow.daily_activity.get_or_create_today(

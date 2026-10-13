@@ -42,6 +42,7 @@ class Application:
             workflow=MorningWorkflow(
                 bot=self.bot,
                 uow_factory=self.uow_factory,
+                excluded_telegram_id=self.admin_id,
             ),
         )
 

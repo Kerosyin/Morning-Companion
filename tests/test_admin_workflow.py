@@ -98,3 +98,33 @@ async def test_failed_admin_outbox_is_retried_without_duplicate(
     assert notifications[0].status == NotificationStatus.SENT
     assert notifications[0].attempts == 2
     assert activity.admin_notified is True
+
+
+async def test_admin_is_excluded_from_inactivity_alerts(uow, monkeypatch):
+    import app.workflows.admin_workflow as aw
+
+    monkeypatch.setattr(
+        aw,
+        "now_in_timezone",
+        lambda: datetime(2026, 1, 1, 13, 0, tzinfo=ZoneInfo("Europe/Moscow")),
+    )
+
+    await _make_user(uow, 999)
+    client_id = await _make_user(uow, 100)
+    bot = MockBot()
+
+    await AdminWorkflow(
+        bot=bot,
+        admin_id=999,
+        uow_factory=lambda: uow,
+    ).execute()
+
+    assert bot.sent == [999]
+    async with uow:
+        client = await uow.users.get(client_id)
+        admin = await uow.users.get_by_telegram_id(999)
+        client_activity = await uow.daily_activity.get_or_create_today(client.id)
+        admin_activity = await uow.daily_activity.get_or_create_today(admin.id)
+
+    assert client_activity.admin_notified is True
+    assert admin_activity.admin_notified is False
